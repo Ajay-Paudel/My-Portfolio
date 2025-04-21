@@ -26,7 +26,7 @@ function Page() {
           <div className="flex justify-center">
             <div className="w-[400px] h-[400px] md:w-[450px] md:h-[450px] rounded-full bg-gradient-to-tr from-orange-500 to-white p-[6px]">
               <img
-                src="myself.jpg"
+                src="myself.png"
                 alt="Ajay"
                 className="rounded-full w-full h-full object-cover"
               />
