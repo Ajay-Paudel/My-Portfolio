@@ -182,13 +182,13 @@ function Page() {
 
       {/* Toast container */}
       <Toaster position="top-center" reverseOrder={false} />
-      
+
       {/* Contact Section */}
       <section id="contact" className="bg-black text-white py-20 px-4">
         <div className="max-w-4xl mx-auto text-center">
           <h2 className="text-4xl font-bold mb-4">Let's Develop Together</h2>
           <p className="text-gray-300 max-w-xl mx-auto mb-10">
-            Whether you have a startup idea or want to scale your existing project...
+             Whether you have a startup idea or want to scale your existing project, I'm here to turn your vision into reality. With a focus on clean code, responsive design, and performance-driven development, I'll help bring your product to life—pixel by pixel, line by line.
           </p>
 
           <form
