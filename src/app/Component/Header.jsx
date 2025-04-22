@@ -1,6 +1,6 @@
 "use client"
 import React, { useState } from 'react';
-import { Menu, X } from 'lucide-react'; 
+import { Menu, X } from 'lucide-react';
 
 function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -30,7 +30,15 @@ function Header() {
         </nav>
 
         {/* Download CV Button (desktop only) */}
-        <div className="hidden md:block">
+        <div className="hidden md:flex space-x-2">
+          <a
+            href="Ajay_CV.pdf"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded-md font-semibold text-sm transition"
+          >
+            Preview CV
+          </a>
           <a
             href="Ajay_CV.pdf"
             className="bg-orange-500 hover:bg-orange-600 text-white py-2 px-4 rounded-md font-semibold text-sm transition"
@@ -39,6 +47,7 @@ function Header() {
             Download CV
           </a>
         </div>
+
 
         {/* Mobile Menu Button */}
         <button onClick={toggleMenu} className="md:hidden">
@@ -56,8 +65,17 @@ function Header() {
           <a href="#contact" className="block hover:text-orange-500 transition">Contact</a>
           <a
             href="Ajay_CV.pdf"
-            className="inline-block bg-orange-500 hover:bg-orange-600 text-white py-2 px-4 rounded-md font-semibold text-sm transition"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-block bg-blue-500 hover:bg-blue-600 text-white py-2 px-4 rounded-md font-semibold text-sm transition"
+          >
+            Preview CV
+          </a>
+
+          <a
+            href="Ajay_CV.pdf"
             download
+            className="inline-block bg-orange-500 hover:bg-orange-600 text-white py-2 px-4 rounded-md font-semibold text-sm transition"
           >
             Download CV
           </a>
