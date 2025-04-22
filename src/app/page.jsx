@@ -182,9 +182,7 @@ function Page() {
 
       {/* Toast container */}
       <Toaster position="top-center" reverseOrder={false} />
-
-      {/* Your existing sections here like Home, About, etc. */}
-
+      
       {/* Contact Section */}
       <section id="contact" className="bg-black text-white py-20 px-4">
         <div className="max-w-4xl mx-auto text-center">
