@@ -1,6 +1,7 @@
 "use client"
 import React, { useRef } from 'react';
 import emailjs from "@emailjs/browser";
+import toast, { Toaster } from 'react-hot-toast';
 
 
 
@@ -12,21 +13,21 @@ function Page() {
 
     emailjs
       .sendForm(
-        "service_sr8469e", // e.g. 'service_ajay123'
-        "template_alrlyk7", // e.g. 'template_qwerty'
+        "service_sr8469e",
+        "template_alrlyk7",
         form.current,
-        "YrzDiwP7gBbuPDY1T" // e.g. 'vL3vU6d8WxyzAbcEF'
+        "YrzDiwP7gBbuPDY1T"
       )
       .then(
         () => {
-          alert("Message sent successfully!");
+          toast.success("Message sent successfully!");
           e.target.reset();
         },
         (error) => {
-          alert("Failed to send message: " + error.text);
+          toast.error("Failed to send message: " + error.text);
         }
       );
-    }
+  };
   return (
     <>
 
@@ -179,12 +180,17 @@ function Page() {
         </div>
       </section>
 
-      {/* Contact */}
+      {/* Toast container */}
+      <Toaster position="top-center" reverseOrder={false} />
+
+      {/* Your existing sections here like Home, About, etc. */}
+
+      {/* Contact Section */}
       <section id="contact" className="bg-black text-white py-20 px-4">
         <div className="max-w-4xl mx-auto text-center">
           <h2 className="text-4xl font-bold mb-4">Let's Develop Together</h2>
           <p className="text-gray-300 max-w-xl mx-auto mb-10">
-            Whether you have a startup idea or want to scale your existing project, I'm here to turn your vision into reality. With a focus on clean code, responsive design, and performance-driven development, I'll help bring your product to life—pixel by pixel, line by line.
+            Whether you have a startup idea or want to scale your existing project...
           </p>
 
           <form
