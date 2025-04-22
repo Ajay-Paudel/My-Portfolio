@@ -1,6 +1,32 @@
-import React from 'react';
+"use client"
+import React, { useRef } from 'react';
+import emailjs from "@emailjs/browser";
+
+
 
 function Page() {
+  const form = useRef();
+
+  const sendEmail = (e) => {
+    e.preventDefault();
+
+    emailjs
+      .sendForm(
+        "service_sr8469e", // e.g. 'service_ajay123'
+        "template_alrlyk7", // e.g. 'template_qwerty'
+        form.current,
+        "YrzDiwP7gBbuPDY1T" // e.g. 'vL3vU6d8WxyzAbcEF'
+      )
+      .then(
+        () => {
+          alert("Message sent successfully!");
+          e.target.reset();
+        },
+        (error) => {
+          alert("Failed to send message: " + error.text);
+        }
+      );
+    }
   return (
     <>
 
@@ -17,7 +43,10 @@ function Page() {
             <p className="text-gray-300 mt-6 leading-relative text-[20px] max-w-md">
               I'm a BCA graduate with a solid foundation in programming and a strong passion for front-end development.
             </p>
-            <button className="mt-6 bg-orange-500 hover:bg-orange-600 text-white font-semibold px-6 py-3 rounded-md">
+            <button
+              onClick={() => document.getElementById("contact").scrollIntoView({ behavior: "smooth" })}
+              className="mt-6 bg-orange-500 hover:bg-orange-600 text-white font-semibold px-6 py-3 rounded-md"
+            >
               Hire Me
             </button>
           </div>
@@ -45,7 +74,7 @@ function Page() {
         <div className="max-w-3xl mx-auto text-center">
           <h2 className="text-4xl font-bold mb-4">About Me</h2>
           <p className="text-gray-300 mb-10">
-          I'm Ajay Paudel, a BCA graduate with a strong foundation in programming and a deep passion for frontend development. I specialize in building clean, responsive, and user-centric websites using modern technologies like React, Next.js, and Tailwind CSS. I believe in continuous learning, paying attention to the details, and delivering high-quality web experiences that combine creativity with performance.
+            I'm Ajay Paudel, a BCA graduate with a strong foundation in programming and a deep passion for frontend development. I specialize in building clean, responsive, and user-centric websites using modern technologies like React, Next.js, and Tailwind CSS. I believe in continuous learning, paying attention to the details, and delivering high-quality web experiences that combine creativity with performance.
           </p>
 
           <div className="space-y-6 text-left">
@@ -111,7 +140,7 @@ function Page() {
         <div className="max-w-7xl mx-auto text-center">
           <h2 className="text-4xl font-bold mb-4">My Projects</h2>
           <p className="max-w-2xl mx-auto text-gray-300 mb-8">
-          As a passionate frontend developer, I've worked on a variety of real-world projects that reflect my skills in design, interactivity, and performance. From travel platforms to e-commerce solutions and news portals, each project has helped me grow technically and creatively. Here's a glimpse of what I've built so far.
+            As a passionate frontend developer, I've worked on a variety of real-world projects that reflect my skills in design, interactivity, and performance. From travel platforms to e-commerce solutions and news portals, each project has helped me grow technically and creatively. Here's a glimpse of what I've built so far.
           </p>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-10">
@@ -155,20 +184,47 @@ function Page() {
         <div className="max-w-4xl mx-auto text-center">
           <h2 className="text-4xl font-bold mb-4">Let's Develop Together</h2>
           <p className="text-gray-300 max-w-xl mx-auto mb-10">
-          Whether you have a startup idea or want to scale your existing project, I'm here to turn your vision into reality. With a focus on clean code, responsive design, and performance-driven development, I'll help bring your product to life—pixel by pixel, line by line.
+            Whether you have a startup idea or want to scale your existing project, I'm here to turn your vision into reality. With a focus on clean code, responsive design, and performance-driven development, I'll help bring your product to life—pixel by pixel, line by line.
           </p>
 
-          <form className="flex flex-col sm:flex-row justify-center items-center gap-4">
+          <form
+            ref={form}
+            onSubmit={sendEmail}
+            className="space-y-6 max-w-xl mx-auto text-left"
+          >
+            <input
+              type="text"
+              name="name"
+              placeholder="Your Name"
+              className="w-full p-3 rounded bg-gray-800 text-white"
+              required
+            />
             <input
               type="email"
-              placeholder="Enter Your Email"
-              className="w-full sm:w-[400px] px-4 py-3 rounded-md text-black bg-white outline-none"
+              name="email"
+              placeholder="Your Email"
+              className="w-full p-3 rounded bg-gray-800 text-white"
+              required
+            />
+            <input
+              type="text"
+              name="title"
+              placeholder="Subject"
+              className="w-full p-3 rounded bg-gray-800 text-white"
+              required
+            />
+            <textarea
+              name="message"
+              placeholder="Your Message"
+              rows="6"
+              className="w-full p-3 rounded bg-gray-800 text-white"
+              required
             />
             <button
               type="submit"
-              className="bg-orange-500 hover:bg-orange-600 text-white font-semibold px-6 py-3 rounded-md transition"
+              className="bg-orange-500 hover:bg-orange-600 text-white font-semibold px-6 py-3 rounded-md"
             >
-              Contact Me
+              Send Message
             </button>
           </form>
         </div>
