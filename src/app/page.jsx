@@ -1,9 +1,7 @@
-"use client"
-import React, { useRef } from 'react';
+"use client";
+import React, { useRef } from "react";
 import emailjs from "@emailjs/browser";
-import toast, { Toaster } from 'react-hot-toast';
-
-
+import toast, { Toaster } from "react-hot-toast";
 
 function Page() {
   const form = useRef();
@@ -28,9 +26,9 @@ function Page() {
         }
       );
   };
+
   return (
     <>
-
       {/* Home Page */}
       <section id="home" className="min-h-screen bg-black text-white flex items-center justify-center px-6 py-12">
         <div className="max-w-7xl w-full flex flex-col md:flex-row items-center justify-between gap-10">
@@ -41,7 +39,7 @@ function Page() {
             <h1 className="text-6xl md:text-6xl font-extrabold mt-3 leading-tight">
               FRONTEND <br /> Developer
             </h1>
-            <p className="text-gray-300 mt-6 leading-relative text-[20px] max-w-md">
+            <p className="text-gray-300 mt-6 text-[20px] max-w-md">
               I'm a BCA graduate with a solid foundation in programming and a strong passion for front-end development.
             </p>
             <button
@@ -106,32 +104,32 @@ function Page() {
           </p>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 justify-items-center">
-            {/* Card 1 */}
-            <div className="bg-white text-black rounded-xl p-6 shadow hover:shadow-md transition max-w-sm">
-              <img src="/computer.svg" alt="Web Dev" className="w-12 h-12 mb-4 mx-auto" />
-              <h3 className="font-bold text-xl mb-2">Web Development</h3>
-              <p className="text-sm text-gray-700">
-                Building responsive, fast, and modern websites using React, Next.js.
-              </p>
-            </div>
-
-            {/* Card 2 */}
-            <div className="bg-white text-black rounded-xl p-6 shadow hover:shadow-md transition max-w-sm">
-              <img src="/search.svg" alt="SEO" className="w-12 h-12 mb-4 mx-auto" />
-              <h3 className="font-bold text-xl mb-2">SEO & Performance Optimization</h3>
-              <p className="text-sm text-gray-700">
-                Ensuring your website is discoverable, loads fast, and ranks well on search engines.
-              </p>
-            </div>
-
-            {/* Card 3 */}
-            <div className="bg-white text-black rounded-xl p-6 shadow hover:shadow-md transition max-w-sm">
-              <img src="/support.svg" alt="Support" className="w-12 h-12 mb-4 mx-auto" />
-              <h3 className="font-bold text-xl mb-2">Freelance Consulting / Tech Support</h3>
-              <p className="text-sm text-gray-700">
-                One-on-one consulting or ongoing tech support for startups and small businesses.
-              </p>
-            </div>
+            {[
+              {
+                icon: "/computer.svg",
+                title: "Web Development",
+                desc: "Building responsive, fast, and modern websites using React, Next.js.",
+              },
+              {
+                icon: "/search.svg",
+                title: "SEO & Performance Optimization",
+                desc: "Ensuring your website is discoverable, loads fast, and ranks well on search engines.",
+              },
+              {
+                icon: "/support.svg",
+                title: "Freelance Consulting / Tech Support",
+                desc: "One-on-one consulting or ongoing tech support for startups and small businesses.",
+              },
+            ].map((card, i) => (
+              <div
+                key={i}
+                className="bg-white text-black rounded-xl p-6 shadow hover:shadow-md transition max-w-sm"
+              >
+                <img src={card.icon} alt={card.title} className="w-12 h-12 mb-4 mx-auto" />
+                <h3 className="font-bold text-xl mb-2">{card.title}</h3>
+                <p className="text-sm text-gray-700">{card.desc}</p>
+              </div>
+            ))}
           </div>
         </div>
       </section>
@@ -141,7 +139,7 @@ function Page() {
         <div className="max-w-7xl mx-auto text-center">
           <h2 className="text-4xl font-bold mb-4">My Projects</h2>
           <p className="max-w-2xl mx-auto text-gray-300 mb-8">
-            As a passionate frontend developer, I've worked on a variety of real-world projects that reflect my skills in design, interactivity, and performance. From travel platforms to e-commerce solutions and news portals, each project has helped me grow technically and creatively. Here's a glimpse of what I've built so far.
+            As a passionate frontend developer, I've worked on a variety of real-world projects that reflect my skills in design, interactivity, and performance. From travel platforms to e-commerce solutions and news portals, each project has helped me grow technically and creatively.
           </p>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-10">
@@ -180,7 +178,7 @@ function Page() {
         </div>
       </section>
 
-      {/* Toast container */}
+      {/* Toast */}
       <Toaster position="top-center" reverseOrder={false} />
 
       {/* Contact Section */}
@@ -188,7 +186,7 @@ function Page() {
         <div className="max-w-4xl mx-auto text-center">
           <h2 className="text-4xl font-bold mb-4">Let's Develop Together</h2>
           <p className="text-gray-300 max-w-xl mx-auto mb-10">
-             Whether you have a startup idea or want to scale your existing project, I'm here to turn your vision into reality. With a focus on clean code, responsive design, and performance-driven development, I'll help bring your product to life—pixel by pixel, line by line.
+            Whether you have a startup idea or want to scale your existing project, I'm here to turn your vision into reality. With a focus on clean code, responsive design, and performance-driven development, I'll help bring your product to life—pixel by pixel, line by line.
           </p>
 
           <form
@@ -233,7 +231,6 @@ function Page() {
           </form>
         </div>
       </section>
-
     </>
   );
 }
