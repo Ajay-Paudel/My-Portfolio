@@ -3,6 +3,7 @@ import { Terminal, RefreshCw, Trophy, Zap } from 'lucide-react';
 import { AI_CONTEXT, OPENROUTER_API_KEY, OPENROUTER_MODEL, PROJECTS } from '../../constants';
 import { TicTacToe } from './TicTacToe';
 import { useGamification } from '../../hooks/useGamification';
+import { useLeaderboard } from '../../hooks/useLeaderboard';
 
 // --- Types & Constants ---
 type Theme = 'dark' | 'light' | 'neon' | 'hacker';
@@ -92,8 +93,7 @@ const MatrixRain = () => {
 // Snake Game Component
 type Difficulty = 'easy' | 'medium' | 'hard';
 
-// Snake Game Component
-type Difficulty = 'easy' | 'medium' | 'hard';
+
 
 const SnakeGame = ({ onExit, addXP }: { onExit: () => void; addXP: (amount: number, reason: string) => void }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -186,10 +186,8 @@ const SnakeGame = ({ onExit, addXP }: { onExit: () => void; addXP: (amount: numb
         let xpGain = 1;
         if (difficulty === 'medium') xpGain = 2;
         if (difficulty === 'hard') xpGain = 5;
-        // Direct call, no spam check needed for snake really, or maybe yes?
-        // Let's pass 'snake_eat' as actionId to allow spam check? 
-        // No, game mechanic is skill based, don't decay snake eats.
-        addXP(xpGain);
+        
+        addXP(xpGain, 'snake_eat');
 
         appleX = Math.floor(Math.random() * tileCount);
         appleY = Math.floor(Math.random() * tileCount);
@@ -298,8 +296,43 @@ const SnakeGame = ({ onExit, addXP }: { onExit: () => void; addXP: (amount: numb
   );
 };
 
-// ... inside CodeTerminal ...
-// update processCommand
+
+export const CodeTerminal = () => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [input, setInput] = useState('');
+  const [history, setHistory] = useState<TerminalLine[]>([
+    { id: '1', type: 'system', content: 'Welcome to Ajay\'s Portfolio Terminal v2.0' },
+    { id: '2', type: 'system', content: 'Type "help" to see available commands.' },
+  ]);
+  const [theme, setTheme] = useState<Theme>('dark');
+  const [isMatrix, setIsMatrix] = useState(false);
+  const [gameMode, setGameMode] = useState<'none' | 'snake' | 'tictactoe' | 'guess' | 'guess_select'>('none');
+  const [guessGame, setGuessGame] = useState<{ target: number; tries: number; maxRange: number } | null>(null);
+
+  // Gamification & Leaderboard
+  const { level, xp, progress, isLevelUp, addXP, resetLevelUp, resetProgress } = useGamification();
+  const { leaderboard, submitScore, userRank, loading: loadingLeaderboard, userId } = useLeaderboard();
+
+  // Auto-scroll
+  useEffect(() => {
+    if (containerRef.current) {
+      containerRef.current.scrollTop = containerRef.current.scrollHeight;
+    }
+  }, [history]);
+
+  const addToHistory = (type: TerminalLine['type'], content: React.ReactNode) => {
+    setHistory(prev => [...prev, { id: Math.random().toString(36).substr(2, 9), type, content }]);
+  };
+
+  const processCommand = async (rawCmd: string) => {
+    const command = rawCmd.trim().toLowerCase();
+    const args = command.split(' ');
+    // Validation
+    if (!command) return;
+
+    const cmd = args[0]; // for clarity though original used simple 'command' switch
+    const argText = args.slice(1).join(' '); // used in some commands
+
 
     addToHistory('input', `user@portfolio:~$ ${rawCmd}`);
 
@@ -385,7 +418,7 @@ const SnakeGame = ({ onExit, addXP }: { onExit: () => void; addXP: (amount: numb
     }
 
     // Standard Commands
-    switch (command) {
+    switch (cmd) {
       case 'help':
         addXP(10, 'help');
         addToHistory('output', (
@@ -399,6 +432,8 @@ const SnakeGame = ({ onExit, addXP }: { onExit: () => void; addXP: (amount: numb
             <div><span className="text-blue-400">skills</span> : Technical stack</div>
             <div><span className="text-blue-400">game [name]</span> : snake, guess, tictactoe</div>
             <div><span className="text-blue-400">projects</span> : View work</div>
+            <div><span className="text-blue-400">leaderboard</span> : View Top 10</div>
+            <div><span className="text-blue-400">stats</span> : Server Status</div>
             <div><span className="text-blue-400">matrix</span> : Toggle rain</div>
             <div><span className="text-blue-400">resume</span> : View CV</div>
             <div><span className="text-blue-400">hack</span> : Simulate breach</div>
@@ -583,6 +618,110 @@ const SnakeGame = ({ onExit, addXP }: { onExit: () => void; addXP: (amount: numb
         break;
 
       case 'whoami': addToHistory('output', 'guest_user'); addXP(5, 'whoami'); break;
+
+      case 'leaderboard':
+        const lbAction = argText.split(' ')[0]; // top, join, etc.
+        const lbName = argText.split(' ').slice(1).join(' ');
+
+        if (lbAction === 'join') {
+          if (!lbName) {
+            addToHistory('error', 'Usage: leaderboard join [YourName]');
+            break;
+          }
+          if (xp < 50) {
+             addToHistory('error', 'You need at least 50 XP to join the leaderboard!');
+             break;
+          }
+          addToHistory('system', 'Submitting score...');
+          const res = await submitScore(lbName, xp);
+          if (res.success) {
+            addToHistory('system', `✅ ${res.message}`);
+            addXP(20, 'leaderboard_join');
+          } else {
+            addToHistory('error', `❌ ${res.message}`);
+          }
+        } else {
+          // Display
+          if (loadingLeaderboard) {
+            addToHistory('system', 'Fetching leaderboard data...');
+          }
+          
+          // Small delay or re-render might be needed if loading, but for now we assume fast fetch or stale data ok
+          // Actually hooks update state, so re-render happens. But command output is static once added history.
+          // Getting CURRENT state from hook is fine.
+          
+          const lbData = leaderboard.slice(0, 10); // Top 10 by default
+
+          addToHistory('output', (
+            <div className="w-full max-w-md border border-slate-700 rounded bg-slate-900/50 p-2 text-xs md:text-sm shadow-xl">
+               <div className="flex justify-between border-b border-slate-700 pb-1 mb-2 text-yellow-500 font-bold">
+                 <span>RANK</span>
+                 <span>PLAYER</span>
+                 <span>XP</span>
+               </div>
+               {lbData.length === 0 ? (
+                 <div className="text-slate-500 italic">No records yet. Be the first!</div>
+               ) : (
+                 lbData.map((entry, i) => {
+                   let rankColor = 'text-slate-300';
+                   let rankIcon = '';
+                   if (i === 0) { rankColor = 'text-yellow-400 font-bold'; rankIcon = '👑 '; }
+                   if (i === 1) { rankColor = 'text-slate-200 font-bold'; rankIcon = '🥈 '; }
+                   if (i === 2) { rankColor = 'text-amber-600 font-bold'; rankIcon = '🥉 '; }
+
+                   return (
+                     <div key={entry.id} className="flex justify-between py-1 border-b border-slate-800/50 hover:bg-white/5 px-1">
+                       <span className={`${rankColor} w-10`}>#{i + 1}</span>
+                       <span className={`flex-1 ${entry.id === userId ? 'text-green-400 font-bold' : 'text-slate-300'}`}>
+                         {rankIcon}{entry.name} {entry.id === userId && '(YOU)'}
+                       </span>
+                       <span className="text-blue-400 font-mono">{entry.score}</span>
+                     </div>
+                   );
+                 })
+               )}
+               <div className="mt-2 text-[10px] text-slate-500 border-t border-slate-700 pt-1 flex justify-between">
+                 <span>Your Rank: {userRank ? `#${userRank}` : 'Unranked'}</span>
+                 <span>Type 'leaderboard join [name]' to submit</span>
+               </div>
+            </div>
+          ));
+        }
+        break;
+
+      case 'stats':
+        addXP(5, 'stats');
+        addToHistory('system', 'Fetching server statistics...');
+        try {
+          const { get, ref } = await import('firebase/database');
+          const { database } = await import('../../firebase');
+          
+          if (!database) throw new Error('DB not connected');
+
+          const connectionsSnap = await get(ref(database, 'visitors/connections'));
+          const totalSnap = await get(ref(database, 'visitors/total'));
+
+          const online = connectionsSnap.exists() ? connectionsSnap.size : 0;
+          const visits = totalSnap.exists() ? totalSnap.val() : 0;
+
+          addToHistory('output', (
+            <div className="border border-green-500/30 bg-green-900/10 p-2 rounded text-green-400 font-mono">
+              <div>📡 SYSTEM STATUS: ONLINE</div>
+              <div>-------------------------</div>
+              <div className="flex justify-between w-48">
+                <span>Active Users:</span>
+                <span className="font-bold text-white">{online}</span>
+              </div>
+              <div className="flex justify-between w-48">
+                <span>Total Visits:</span>
+                <span className="font-bold text-white">{visits}</span>
+              </div>
+            </div>
+          ));
+        } catch (e) {
+          addToHistory('error', 'Failed to retrieve stats.');
+        }
+        break;
 
       default:
         isValidCommand = false;

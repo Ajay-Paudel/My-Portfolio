@@ -3,6 +3,14 @@
     "visitors": {
       ".read": true,
       ".write": true
+    },
+    "leaderboard": {
+      ".read": true,
+      ".write": true,
+      ".indexOn": ["score", "name"],
+      "$userId": {
+        ".validate": "newData.hasChildren(['name', 'score'])"
+      }
     }
   }
 }

@@ -1,33 +1,17 @@
 import React, { useEffect, useState } from 'react';
-import { initializeApp, getApps, getApp } from 'firebase/app';
 import { 
-  getDatabase, 
   ref, 
   onValue, 
   push, 
   onDisconnect, 
   set, 
   serverTimestamp,
-  increment,
   runTransaction
 } from 'firebase/database';
 import { Users, Eye } from 'lucide-react';
-import { FIREBASE_CONFIG } from '../../constants';
+import { database } from '../../firebase';
 
-// Initialize Firebase only once
-let app;
-let database: any;
-
-try {
-  if (getApps().length === 0) {
-    app = initializeApp(FIREBASE_CONFIG);
-  } else {
-    app = getApp();
-  }
-  database = getDatabase(app);
-} catch (error) {
-  console.error("Firebase initialization failed:", error);
-}
+// Initialize Firebase only once (Removed local init)
 
 export const VisitorCounter: React.FC = () => {
   const [onlineCount, setOnlineCount] = useState<number>(0);
