@@ -87,12 +87,43 @@ const MatrixRain = () => {
 };
 
 // Snake Game Component
+type Difficulty = 'easy' | 'medium' | 'hard';
+
 const SnakeGame = ({ onExit }: { onExit: () => void }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [score, setScore] = useState(0);
   const [gameOver, setGameOver] = useState(false);
+  const [gameStarted, setGameStarted] = useState(false);
+  const [difficulty, setDifficulty] = useState<Difficulty | null>(null);
+  const velocityRef = useRef({ x: 0, y: 0 });
+
+  const difficultySettings = {
+    easy: { speed: 150, label: 'Easy', color: 'bg-green-500 hover:bg-green-400', description: 'Slower snake' },
+    medium: { speed: 100, label: 'Medium', color: 'bg-yellow-500 hover:bg-yellow-400', description: 'Normal speed' },
+    hard: { speed: 60, label: 'Hard', color: 'bg-red-500 hover:bg-red-400', description: 'Fast snake' },
+  };
+
+  const startGame = (diff: Difficulty) => {
+    setDifficulty(diff);
+    setGameStarted(true);
+    setScore(0);
+    setGameOver(false);
+    velocityRef.current = { x: 0, y: 0 };
+  };
+
+  const changeDirection = (direction: 'up' | 'down' | 'left' | 'right') => {
+    const { x: velocityX, y: velocityY } = velocityRef.current;
+    switch (direction) {
+      case 'left': if (velocityX !== 1) { velocityRef.current = { x: -1, y: 0 }; } break;
+      case 'up': if (velocityY !== 1) { velocityRef.current = { x: 0, y: -1 }; } break;
+      case 'right': if (velocityX !== -1) { velocityRef.current = { x: 1, y: 0 }; } break;
+      case 'down': if (velocityY !== -1) { velocityRef.current = { x: 0, y: 1 }; } break;
+    }
+  };
 
   useEffect(() => {
+    if (!gameStarted || !difficulty) return;
+    
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
@@ -100,8 +131,6 @@ const SnakeGame = ({ onExit }: { onExit: () => void }) => {
 
     const gridSize = 20;
     const tileCount = 20; // 400x400 canvas
-    let velocityX = 0;
-    let velocityY = 0;
     let playerX = 10;
     let playerY = 10;
     let appleX = 15;
@@ -109,9 +138,12 @@ const SnakeGame = ({ onExit }: { onExit: () => void }) => {
     let trail: { x: number; y: number }[] = [];
     let tail = 5;
 
+    const speed = difficultySettings[difficulty].speed;
+
     const gameLoop = setInterval(() => {
       if (gameOver) return;
 
+      const { x: velocityX, y: velocityY } = velocityRef.current;
       playerX += velocityX;
       playerY += velocityY;
 
@@ -148,14 +180,19 @@ const SnakeGame = ({ onExit }: { onExit: () => void }) => {
 
       ctx.fillStyle = 'red';
       ctx.fillRect(appleX * gridSize, appleY * gridSize, gridSize - 2, gridSize - 2);
-    }, 100);
+    }, speed);
 
     const handleKey = (e: KeyboardEvent) => {
+      // Prevent arrow keys from scrolling the page
+      if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+        e.preventDefault();
+      }
+      
       switch (e.key) {
-        case 'ArrowLeft': if (velocityX !== 1) { velocityX = -1; velocityY = 0; } break;
-        case 'ArrowUp': if (velocityY !== 1) { velocityX = 0; velocityY = -1; } break;
-        case 'ArrowRight': if (velocityX !== -1) { velocityX = 1; velocityY = 0; } break;
-        case 'ArrowDown': if (velocityY !== -1) { velocityX = 0; velocityY = 1; } break;
+        case 'ArrowLeft': changeDirection('left'); break;
+        case 'ArrowUp': changeDirection('up'); break;
+        case 'ArrowRight': changeDirection('right'); break;
+        case 'ArrowDown': changeDirection('down'); break;
         case 'Escape': onExit(); break;
       }
     };
@@ -165,17 +202,78 @@ const SnakeGame = ({ onExit }: { onExit: () => void }) => {
       clearInterval(gameLoop);
       document.removeEventListener('keydown', handleKey);
     };
-  }, [gameOver, onExit]);
+  }, [gameStarted, difficulty, gameOver, onExit]);
+
+  // Start Screen
+  if (!gameStarted) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full space-y-6 font-mono bg-black text-white p-4">
+        <div className="text-center">
+          <h2 className="text-3xl md:text-4xl font-bold text-green-400 mb-2">🐍 SNAKE</h2>
+          <p className="text-slate-400 text-sm">Select Difficulty</p>
+        </div>
+        
+        <div className="flex flex-col gap-3 w-full max-w-xs">
+          {(Object.keys(difficultySettings) as Difficulty[]).map((diff) => (
+            <button
+              key={diff}
+              onClick={() => startGame(diff)}
+              className={`${difficultySettings[diff].color} text-white font-bold py-3 px-6 rounded-lg transition-all transform hover:scale-105 active:scale-95`}
+            >
+              <div className="text-lg">{difficultySettings[diff].label}</div>
+              <div className="text-xs opacity-80">{difficultySettings[diff].description}</div>
+            </button>
+          ))}
+        </div>
+        
+        <button 
+          onClick={onExit}
+          className="text-slate-500 hover:text-slate-300 text-sm underline mt-4"
+        >
+          Back to Terminal
+        </button>
+      </div>
+    );
+  }
+
+  // Touch control button component
+  const ControlButton = ({ direction, symbol }: { direction: 'up' | 'down' | 'left' | 'right', symbol: string }) => (
+    <button
+      onTouchStart={(e) => { e.preventDefault(); changeDirection(direction); }}
+      onClick={() => changeDirection(direction)}
+      className="w-12 h-12 bg-slate-700/80 hover:bg-slate-600 active:bg-green-600 rounded-lg flex items-center justify-center text-xl font-bold text-white select-none transition-colors touch-manipulation"
+    >
+      {symbol}
+    </button>
+  );
 
   return (
-    <div className="flex flex-col items-center justify-center h-full space-y-4 font-mono bg-black text-white p-4">
-      <div className="text-xl text-green-400">SCORE: {score}</div>
-      <canvas ref={canvasRef} width="400" height="400" className="border-2 border-slate-700 bg-black" />
-      <div className="text-sm text-slate-400">Use Arrow Keys to Move | Press ESC to Exit</div>
+    <div className="flex flex-col items-center justify-center h-full space-y-2 font-mono bg-black text-white p-2 md:p-4">
+      <div className="text-lg md:text-xl text-green-400">SCORE: {score}</div>
+      <canvas ref={canvasRef} width="400" height="400" className="border-2 border-slate-700 bg-black max-w-full" style={{ maxHeight: '250px', width: 'auto' }} />
+      
+      {/* Mobile Touch Controls */}
+      <div className="flex flex-col items-center gap-1 md:hidden">
+        <ControlButton direction="up" symbol="▲" />
+        <div className="flex gap-8">
+          <ControlButton direction="left" symbol="◀" />
+          <ControlButton direction="right" symbol="▶" />
+        </div>
+        <ControlButton direction="down" symbol="▼" />
+      </div>
+      
+      {/* Desktop instructions */}
+      <div className="hidden md:block text-sm text-slate-400">Use Arrow Keys to Move | Press ESC to Exit</div>
+      
+      {/* Mobile instructions */}
+      <div className="md:hidden text-xs text-slate-400 text-center">
+        <button onClick={onExit} className="text-red-400 underline">Tap here to Exit</button>
+      </div>
+      
       {gameOver && (
         <div className="absolute inset-0 flex items-center justify-center bg-black/80 z-20">
           <div className="text-center">
-            <h3 className="text-red-500 text-3xl font-bold mb-4">GAME OVER</h3>
+            <h3 className="text-red-500 text-2xl md:text-3xl font-bold mb-4">GAME OVER</h3>
             <button onClick={onExit} className="px-4 py-2 bg-slate-700 text-white rounded hover:bg-slate-600">
               Return to Terminal
             </button>
@@ -194,9 +292,9 @@ export const CodeTerminal: React.FC = () => {
     { id: 'help-hint', type: 'system', content: `Type 'help' to see available commands.` },
   ]);
   const [theme, setTheme] = useState<Theme>('dark');
-  const [gameMode, setGameMode] = useState<'none' | 'snake' | 'guess'>('none');
+  const [gameMode, setGameMode] = useState<'none' | 'snake' | 'guess' | 'guess_select'>('none');
   const [isMatrix, setIsMatrix] = useState(false);
-  const [guessGame, setGuessGame] = useState<{ target: number, tries: number } | null>(null);
+  const [guessGame, setGuessGame] = useState<{ target: number, tries: number, maxRange: number } | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Auto-scroll
@@ -217,6 +315,37 @@ export const CodeTerminal: React.FC = () => {
     const argText = args.slice(1).join(' ');
 
     addToHistory('input', `user@portfolio:~$ ${rawCmd}`);
+
+    // Handle Guess Game Difficulty Selection
+    if (gameMode === 'guess_select') {
+      const choice = cmd.toLowerCase().trim();
+      if (choice === 'exit') {
+        setGameMode('none');
+        addToHistory('system', 'Exited game selection.');
+        return;
+      }
+      
+      const difficulties: { [key: string]: { range: number, label: string } } = {
+        'easy': { range: 10, label: 'Easy (1-10)' },
+        'medium': { range: 50, label: 'Medium (1-50)' },
+        'hard': { range: 100, label: 'Hard (1-100)' },
+        '1': { range: 10, label: 'Easy (1-10)' },
+        '2': { range: 50, label: 'Medium (1-50)' },
+        '3': { range: 100, label: 'Hard (1-100)' },
+      };
+      
+      if (difficulties[choice]) {
+        const { range, label } = difficulties[choice];
+        const target = Math.floor(Math.random() * range) + 1;
+        setGuessGame({ target, tries: 0, maxRange: range });
+        setGameMode('guess');
+        addToHistory('system', `🎮 ${label} mode selected!`);
+        addToHistory('system', `I picked a number between 1 and ${range}. Guess it!`);
+      } else {
+        addToHistory('error', 'Please type: easy, medium, hard (or 1, 2, 3)');
+      }
+      return;
+    }
 
     // Handle Guess Game Logic
     if (gameMode === 'guess') {
@@ -349,9 +478,17 @@ export const CodeTerminal: React.FC = () => {
           setGameMode('snake');
           addToHistory('system', 'Starting Snake...');
         } else if (argText === 'guess') {
-          setGameMode('guess');
-          setGuessGame({ target: Math.floor(Math.random() * 20) + 1, tries: 0 });
-          addToHistory('system', 'I picked a number between 1 and 20. Guess it!');
+          setGameMode('guess_select');
+          addToHistory('system', '🎯 NUMBER GUESSING GAME');
+          addToHistory('output', (
+            <div className="space-y-1">
+              <div className="text-yellow-400">Select Difficulty:</div>
+              <div><span className="text-green-400">1. Easy</span> - Guess 1-10</div>
+              <div><span className="text-yellow-400">2. Medium</span> - Guess 1-50</div>
+              <div><span className="text-red-400">3. Hard</span> - Guess 1-100</div>
+              <div className="text-slate-500 text-xs mt-2">Type: easy, medium, hard (or 1, 2, 3)</div>
+            </div>
+          ));
         } else {
           addToHistory('error', 'Available games: snake, guess');
         }
@@ -481,7 +618,7 @@ export const CodeTerminal: React.FC = () => {
 
             <div className="flex items-center mt-2 z-20 relative">
               <span className={`${themeStyles.prompt} mr-2`}>
-                {gameMode === 'guess' ? 'guess_game?' : 'visitor@portfolio:~$'}
+                {gameMode === 'guess' ? `guess(1-${guessGame?.maxRange || '?'})?` : gameMode === 'guess_select' ? 'select_difficulty?' : 'visitor@portfolio:~$'}
               </span>
               <input
                 type="text"
