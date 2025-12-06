@@ -2,7 +2,9 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/favicon.svg" />
+    <link rel="manifest" href="/manifest.json" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Ajay Paudel | Frontend Developer & UI/UX Designer</title>
     <meta
@@ -226,7 +228,22 @@
     <link rel="stylesheet" href="/index.css" />
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <!-- Static content for SEO crawlers (replaced by React upon load) -->
+      <div style="visibility: hidden; height: 0; overflow: hidden;">
+        <h1>Ajay Paudel</h1>
+        <h2>Frontend Developer & UI/UX Designer</h2>
+        <p>Portfolio of Ajay Paudel, a Creative Frontend Developer and UI/UX Designer from Nepal specializing in React, Next.js, and modern web experiences.</p>
+        <p>Expertise in JavaScript, TypeScript, Tailwind CSS, and building responsive, user-centric digital solutions.</p>
+        <nav>
+          <a href="#hero">Home</a>
+          <a href="#about">About</a>
+          <a href="#skills">Skills</a>
+          <a href="#projects">Projects</a>
+          <a href="#contact">Contact</a>
+        </nav>
+      </div>
+    </div>
     <script type="module" src="./index.tsx"></script>
     <script type="module" src="/index.tsx"></script>
   </body>

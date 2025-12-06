@@ -1,0 +1,16 @@
+{
+  "name": "Ajay Paudel Portfolio",
+  "short_name": "Ajay Paudel",
+  "description": "Portfolio of Ajay Paudel, Frontend Developer & UI/UX Designer",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#4F46E5",
+  "icons": [
+    {
+      "src": "favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}
