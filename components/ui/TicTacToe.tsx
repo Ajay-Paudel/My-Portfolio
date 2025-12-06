@@ -6,6 +6,7 @@ type Difficulty = 'easy' | 'medium' | 'hard' | 'pvp';
 
 interface TicTacToeProps {
   onExit: () => void;
+  addXP: (amount: number, reason: string) => void;
 }
 
 const WINNING_COMBINATIONS = [
@@ -14,16 +15,35 @@ const WINNING_COMBINATIONS = [
   [0, 4, 8], [2, 4, 6]             // Diagonals
 ];
 
-export const TicTacToe: React.FC<TicTacToeProps> = ({ onExit }) => {
+export const TicTacToe: React.FC<TicTacToeProps> = ({ onExit, addXP }) => {
   const [board, setBoard] = useState<SquareValue[]>(Array(9).fill(null));
   const [isXNext, setIsXNext] = useState<boolean>(true);
   const [winner, setWinner] = useState<Player | 'Draw' | null>(null);
   const [difficulty, setDifficulty] = useState<Difficulty | null>(null);
   const [gameStarted, setGameStarted] = useState<boolean>(false);
   const [aiThinking, setAiThinking] = useState<boolean>(false);
+  const [hasAwardedXP, setHasAwardedXP] = useState(false);
 
   // Sound effects (using standard HTML audio for simplicity or pass props if we want to reuse hook)
   // For now, visual feedback is sufficient for the terminal vibe.
+
+  useEffect(() => {
+    if (winner && !hasAwardedXP) {
+       setHasAwardedXP(true);
+       if (winner === 'X') {
+         // Player Won (assuming Player is X)
+         let xp = 0;
+         if (difficulty === 'easy') xp = 20;
+         if (difficulty === 'medium') xp = 50;
+         if (difficulty === 'hard') xp = 100;
+         if (difficulty === 'pvp') xp = 15; // Small reward for PvP
+         
+         if (xp > 0) addXP(xp, `Win TicTacToe ${difficulty}`);
+       } else if (winner === 'Draw') {
+         addXP(5, 'Draw TicTacToe');
+       }
+    }
+  }, [winner, difficulty, hasAwardedXP, addXP]);
 
   const checkWinner = (squares: SquareValue[]): Player | 'Draw' | null => {
     for (let combo of WINNING_COMBINATIONS) {
@@ -147,6 +167,7 @@ export const TicTacToe: React.FC<TicTacToeProps> = ({ onExit }) => {
     setBoard(Array(9).fill(null));
     setWinner(null);
     setIsXNext(true);
+    setHasAwardedXP(false);
   };
 
   if (!gameStarted) {

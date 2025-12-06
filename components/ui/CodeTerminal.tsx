@@ -92,7 +92,10 @@ const MatrixRain = () => {
 // Snake Game Component
 type Difficulty = 'easy' | 'medium' | 'hard';
 
-const SnakeGame = ({ onExit }: { onExit: () => void }) => {
+// Snake Game Component
+type Difficulty = 'easy' | 'medium' | 'hard';
+
+const SnakeGame = ({ onExit, addXP }: { onExit: () => void; addXP: (amount: number, reason: string) => void }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [score, setScore] = useState(0);
   const [gameOver, setGameOver] = useState(false);
@@ -127,13 +130,14 @@ const SnakeGame = ({ onExit }: { onExit: () => void }) => {
   useEffect(() => {
     if (!gameStarted || !difficulty) return;
     
+    // ... context and vars ...
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
     const gridSize = 20;
-    const tileCount = 20; // 400x400 canvas
+    const tileCount = 20; 
     let playerX = 10;
     let playerY = 10;
     let appleX = 15;
@@ -177,6 +181,16 @@ const SnakeGame = ({ onExit }: { onExit: () => void }) => {
       if (appleX === playerX && appleY === playerY) {
         tail++;
         setScore(s => s + 1);
+        
+        // Award XP on apple eat
+        let xpGain = 1;
+        if (difficulty === 'medium') xpGain = 2;
+        if (difficulty === 'hard') xpGain = 5;
+        // Direct call, no spam check needed for snake really, or maybe yes?
+        // Let's pass 'snake_eat' as actionId to allow spam check? 
+        // No, game mechanic is skill based, don't decay snake eats.
+        addXP(xpGain);
+
         appleX = Math.floor(Math.random() * tileCount);
         appleY = Math.floor(Math.random() * tileCount);
       }
@@ -185,12 +199,11 @@ const SnakeGame = ({ onExit }: { onExit: () => void }) => {
       ctx.fillRect(appleX * gridSize, appleY * gridSize, gridSize - 2, gridSize - 2);
     }, speed);
 
+   // ... rest of useEffect
     const handleKey = (e: KeyboardEvent) => {
-      // Prevent arrow keys from scrolling the page
       if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
         e.preventDefault();
       }
-      
       switch (e.key) {
         case 'ArrowLeft': changeDirection('left'); break;
         case 'ArrowUp': changeDirection('up'); break;
@@ -205,9 +218,16 @@ const SnakeGame = ({ onExit }: { onExit: () => void }) => {
       clearInterval(gameLoop);
       document.removeEventListener('keydown', handleKey);
     };
-  }, [gameStarted, difficulty, gameOver, onExit]);
 
-  // Start Screen
+  }, [gameStarted, difficulty, gameOver, onExit, addXP]);
+
+  // ... (render remains same) ...
+  // Need to copy Full render if I replace the component def.
+  // Actually, I should use multi replace carefully or just rewrite the component.
+  // Given I need to change the prop in signature, I must replace the signature.
+  // And the useEffect deps.
+  
+  // Let's just return the full component code block to be safe.
   if (!gameStarted) {
     return (
       <div className="flex flex-col items-center justify-center h-full space-y-6 font-mono bg-black text-white p-4">
@@ -228,18 +248,12 @@ const SnakeGame = ({ onExit }: { onExit: () => void }) => {
             </button>
           ))}
         </div>
-        
-        <button 
-          onClick={onExit}
-          className="text-slate-500 hover:text-slate-300 text-sm underline mt-4"
-        >
-          Back to Terminal
-        </button>
+         {/* ... */}
+         <button onClick={onExit} className="text-slate-500 hover:text-slate-300 text-sm underline mt-4">Back to Terminal</button>
       </div>
     );
   }
 
-  // Touch control button component
   const ControlButton = ({ direction, symbol }: { direction: 'up' | 'down' | 'left' | 'right', symbol: string }) => (
     <button
       onTouchStart={(e) => { e.preventDefault(); changeDirection(direction); }}
@@ -254,8 +268,7 @@ const SnakeGame = ({ onExit }: { onExit: () => void }) => {
     <div className="flex flex-col items-center justify-center h-full space-y-2 font-mono bg-black text-white p-2 md:p-4">
       <div className="text-lg md:text-xl text-green-400">SCORE: {score}</div>
       <canvas ref={canvasRef} width="400" height="400" className="border-2 border-slate-700 bg-black max-w-full" style={{ maxHeight: '250px', width: 'auto' }} />
-      
-      {/* Mobile Touch Controls */}
+       {/* ... Controls ... */}
       <div className="flex flex-col items-center gap-1 md:hidden">
         <ControlButton direction="up" symbol="▲" />
         <div className="flex gap-8">
@@ -265,10 +278,8 @@ const SnakeGame = ({ onExit }: { onExit: () => void }) => {
         <ControlButton direction="down" symbol="▼" />
       </div>
       
-      {/* Desktop instructions */}
       <div className="hidden md:block text-sm text-slate-400">Use Arrow Keys to Move | Press ESC to Exit</div>
       
-      {/* Mobile instructions */}
       <div className="md:hidden text-xs text-slate-400 text-center">
         <button onClick={onExit} className="text-red-400 underline">Tap here to Exit</button>
       </div>
@@ -287,59 +298,12 @@ const SnakeGame = ({ onExit }: { onExit: () => void }) => {
   );
 };
 
-// Main Terminal Component
-export const CodeTerminal: React.FC = () => {
-  const [input, setInput] = useState('');
-  const [history, setHistory] = useState<TerminalLine[]>([
-    { id: 'init', type: 'system', content: `Welcome to AjayOS v2.0.0` },
-    { id: 'help-hint', type: 'system', content: `Type 'help' to see available commands.` },
-  ]);
-  const [theme, setTheme] = useState<Theme>('dark');
-  const [gameMode, setGameMode] = useState<'none' | 'snake' | 'guess' | 'guess_select' | 'tictactoe'>('none');
-  const [isMatrix, setIsMatrix] = useState(false);
-  const [guessGame, setGuessGame] = useState<{ target: number, tries: number, maxRange: number } | null>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  // Gamification Hook
-  const { level, progress, isLevelUp, addXP, resetLevelUp, resetProgress } = useGamification();
-
-  // Auto-scroll
-  useEffect(() => {
-    if (containerRef.current) {
-      containerRef.current.scrollTop = containerRef.current.scrollHeight;
-    }
-  }, [history, gameMode]);
-
-  // Level Up Notification Auto-hide (optional, or just let user click)
-  useEffect(() => {
-    if (isLevelUp) {
-      // Optional: Add a confetti burst here if we had a library
-      setTimeout(() => {
-        // We could auto-hide, but distinct modal is nicer
-      }, 3000);
-    }
-  }, [isLevelUp]);
-
-  const addToHistory = (type: TerminalLine['type'], content: React.ReactNode) => {
-    setHistory(prev => [...prev, { id: Date.now().toString() + Math.random(), type, content }]);
-  };
-
-  const processCommand = async (cmd: string) => {
-    const rawCmd = cmd;
-    const args = cmd.trim().split(' ');
-    const command = args[0].toLowerCase();
-    const argText = args.slice(1).join(' ');
-
-    if (!command) return;
+// ... inside CodeTerminal ...
+// update processCommand
 
     addToHistory('input', `user@portfolio:~$ ${rawCmd}`);
 
     // Award XP only if it matches a valid command
-    // We can do this implicitly by adding XP in the switch cases or verifying here first.
-    // For cleaner code, let's assume it's valid unless default case is hit, but default case is complex to bubble up.
-    // Simplest approach: Validate against known list or check in Default.
-    
-    // Instead of awarding upfront, let's track success.
     let isValidCommand = true;
 
     // Handle Guess Game Difficulty Selection
@@ -348,8 +312,6 @@ export const CodeTerminal: React.FC = () => {
       if (choice === 'exit') {
         setGameMode('none');
         addToHistory('system', 'Exited game selection.');
-        // No XP for exiting? Or small? Let's say valid.
-        addXP(5);
         return;
       }
       
@@ -369,7 +331,7 @@ export const CodeTerminal: React.FC = () => {
         setGameMode('guess');
         addToHistory('system', `🎮 ${label} mode selected!`);
         addToHistory('system', `I picked a number between 1 and ${range}. Guess it!`);
-        addXP(10);
+        addXP(5, 'start_guess');
       } else {
         addToHistory('error', 'Please type: easy, medium, hard (or 1, 2, 3)');
         isValidCommand = false;
@@ -385,23 +347,31 @@ export const CodeTerminal: React.FC = () => {
           setGameMode('none');
           setGuessGame(null);
           addToHistory('system', 'Exited guessing game.');
-          addXP(5);
         } else {
            addToHistory('error', 'Please enter a valid number or type "exit" to quit.');
-           // No XP for invalid input
         }
         return;
       }
 
       if (!guessGame) return;
 
-      // Guessing is valid input even if wrong number, it awards small XP?
-      // Or just award for playing. Let's award 2 XP for a guess attempt to keep them engaged.
-      addXP(5);
+      addXP(1, 'guess_attempt'); // Small pity XP
 
       if (num === guessGame.target) {
+        // Calculate dynamic XP
+        // Base: Easy=20, Medium=50, Hard=100
+        // Penalty: 5 per try
+        let base = 20;
+        if (guessGame.maxRange === 50) base = 50;
+        if (guessGame.maxRange === 100) base = 100;
+        
+        let winXP = base - (guessGame.tries * 5);
+        if (winXP < 5) winXP = 5; // Minimum reward
+
         addToHistory('system', `🎉 CORRECT! The number was ${guessGame.target}. You won in ${guessGame.tries + 1} tries.`);
-        addXP(50); // Bonus XP for winning
+        addToHistory('system', `You earned ${winXP} XP!`);
+        addXP(winXP); // No decay for winning
+        
         setGameMode('none');
         setGuessGame(null);
       } else if (num < guessGame.target) {
@@ -417,7 +387,7 @@ export const CodeTerminal: React.FC = () => {
     // Standard Commands
     switch (command) {
       case 'help':
-        addXP(10);
+        addXP(10, 'help');
         addToHistory('output', (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
             <div className="text-yellow-400 col-span-2 md:col-span-1">--- General ---</div>
@@ -442,7 +412,7 @@ export const CodeTerminal: React.FC = () => {
         break;
 
       case 'about':
-        addXP(10);
+        addXP(10, 'about');
         addToHistory('output', (
           <div className="p-2 border-l-2 border-blue-500 bg-blue-500/10">
             <div className="font-bold text-lg">👨‍💻 Ajay Paudel</div>
@@ -453,7 +423,7 @@ export const CodeTerminal: React.FC = () => {
         break;
 
       case 'skills':
-        addXP(10);
+        addXP(10, 'skills');
         addToHistory('output', (
           <div className="space-y-2 border p-2 border-dashed border-slate-600 rounded">
             <div><span className="text-green-400 font-bold">Frontend:</span> React, Next.js, Tailwind, HTML, CSS</div>
@@ -464,7 +434,7 @@ export const CodeTerminal: React.FC = () => {
         break;
 
       case 'projects':
-        addXP(10);
+        addXP(10, 'projects');
         addToHistory('output', (
           <div className="space-y-2">
             {PROJECTS.map((p, i) => (
@@ -478,18 +448,17 @@ export const CodeTerminal: React.FC = () => {
         break;
 
       case 'resume':
-        addXP(10);
+        addXP(10, 'resume');
         addToHistory('output', <pre className="text-[10px] md:text-xs leading-none text-slate-300 font-mono overflow-x-auto">{RESUME_ASCII}</pre>);
         break;
       
       case 'contact':
-        addXP(10);
+        addXP(10, 'contact');
         addToHistory('output', '📧 Email: ajayindrapaudel@gmail.com | 📍 Location: Kathmandu');
         break;
 
       case 'clear':
-        // No XP for clearing? Or small.
-        addXP(5);
+        addXP(2, 'clear'); // Low base XP
         setHistory([]);
         break;
       
@@ -502,7 +471,7 @@ export const CodeTerminal: React.FC = () => {
         if (['dark', 'light', 'neon', 'hacker'].includes(argText)) {
           setTheme(argText as Theme);
           addToHistory('system', `Theme switched to ${argText}`);
-          addXP(10);
+          addXP(10, 'theme');
         } else {
           addToHistory('error', 'Usage: theme [dark | light | neon | hacker]');
         }
@@ -511,14 +480,14 @@ export const CodeTerminal: React.FC = () => {
       case 'matrix':
         setIsMatrix(!isMatrix);
         addToHistory('system', `Matrix mode ${!isMatrix ? 'ENABLED' : 'DISABLED'}`);
-        addXP(10);
+        addXP(10, 'matrix');
         break;
 
       case 'ascii':
         if (!argText) {
           addToHistory('error', 'Usage: ascii [text]');
         } else {
-           addXP(15); // Creative command
+           addXP(15, 'ascii'); // Creative command
            addToHistory('output', (
              <div className="text-2xl md:text-4xl font-bold tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-blue-500 uppercase my-2">
                {argText}
@@ -531,11 +500,11 @@ export const CodeTerminal: React.FC = () => {
         if (argText === 'snake') {
           setGameMode('snake');
           addToHistory('system', 'Starting Snake...');
-          addXP(10);
+          addXP(5, 'start_snake');
         } else if (argText.includes('tic')) {
             setGameMode('tictactoe');
             addToHistory('system', 'Starting Tic-Tac-Toe...');
-            addXP(10);
+            addXP(5, 'start_tic');
         } else if (argText === 'guess') {
           setGameMode('guess_select');
           addToHistory('system', '🎯 NUMBER GUESSING GAME');
@@ -548,14 +517,14 @@ export const CodeTerminal: React.FC = () => {
               <div className="text-slate-500 text-xs mt-2">Type: easy, medium, hard (or 1, 2, 3)</div>
             </div>
           ));
-          addXP(10);
+          addXP(5, 'start_guess');
         } else {
           addToHistory('error', 'Available games: snake, guess, tictactoe');
         }
         break;
 
       case 'hack':
-        addXP(50); // Easter egg bonus
+        addXP(50, 'hack'); // Easter egg, rarely repeated ideally
         const hackSteps = [
           "Initiating handshake...",
           "Bypassing firewall...",
@@ -575,7 +544,7 @@ export const CodeTerminal: React.FC = () => {
           addToHistory('error', 'Usage: ai [your message]');
           break;
         }
-        addXP(20); // Higher XP for using AI
+        addXP(20, 'ai');
         addToHistory('system', 'Contacting OpenRouter API...');
         try {
           const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
@@ -602,18 +571,18 @@ export const CodeTerminal: React.FC = () => {
         break;
 
       // Fun Commands
-      case 'coffee': addToHistory('output', '☕ Here is your coffee. Be careful, it\'s hot!'); addXP(5); break;
-      case 'joke': addToHistory('output', 'Why do programmers prefer dark mode? Because light attracts bugs.'); addXP(5); break;
-      case 'ping': addToHistory('output', 'Pong! 🏓'); addXP(5); break;
-      case 'ajay?': addToHistory('output', 'He is the one writing this code right now.'); addXP(5); break;
-      case 'sudo': addToHistory('error', 'Permission denied: You are not root.'); addXP(1); break;
+      case 'coffee': addToHistory('output', '☕ Here is your coffee. Be careful, it\'s hot!'); addXP(5, 'fun'); break;
+      case 'joke': addToHistory('output', 'Why do programmers prefer dark mode? Because light attracts bugs.'); addXP(5, 'fun'); break;
+      case 'ping': addToHistory('output', 'Pong! 🏓'); addXP(5, 'fun'); break;
+      case 'ajay?': addToHistory('output', 'He is the one writing this code right now.'); addXP(5, 'fun'); break;
+      case 'sudo': addToHistory('error', 'Permission denied: You are not root.'); addXP(1, 'sudo'); break;
       case 'rickroll': 
         addToHistory('output', 'Never gonna give you up, never gonna let you down... 🎵'); 
         window.open('https://www.youtube.com/watch?v=dQw4w9WgXcQ', '_blank');
-        addXP(50); // Prank bonus
+        addXP(50, 'rickroll'); 
         break;
 
-      case 'whoami': addToHistory('output', 'guest_user'); addXP(5); break;
+      case 'whoami': addToHistory('output', 'guest_user'); addXP(5, 'whoami'); break;
 
       default:
         isValidCommand = false;
@@ -694,9 +663,9 @@ export const CodeTerminal: React.FC = () => {
       {/* Content Area */}
       <div className="flex-1 relative overflow-hidden">
         {gameMode === 'snake' ? (
-          <SnakeGame onExit={() => setGameMode('none')} />
+          <SnakeGame onExit={() => setGameMode('none')} addXP={addXP} />
         ) : gameMode === 'tictactoe' ? (
-          <TicTacToe onExit={() => setGameMode('none')} />
+          <TicTacToe onExit={() => setGameMode('none')} addXP={addXP} />
         ) : (
           <div 
             ref={containerRef}

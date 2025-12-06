@@ -6,7 +6,7 @@ interface GamificationState {
   level: number;
   progress: number;
   isLevelUp: boolean;
-  addXP: (amount: number) => void;
+  addXP: (amount: number, actionId?: string) => void;
   resetLevelUp: () => void;
   resetProgress: () => void;
 }
@@ -49,9 +49,38 @@ export const useGamification = (): GamificationState => {
   // e.g. 150 XP -> Level 1 (50 XP into level) -> 50%
   const progress = (xp % XP_PER_LEVEL) / XP_PER_LEVEL * 100;
 
-  const addXP = useCallback((amount: number) => {
-    setXp(prev => prev + amount);
-  }, []);
+  // Anti-spam state
+  const [lastAction, setLastAction] = useState<string>('');
+  const [repeatCount, setRepeatCount] = useState<number>(0);
+
+  const addXP = useCallback((amount: number, actionId?: string) => {
+    let finalAmount = amount;
+
+    if (actionId) {
+      if (actionId === lastAction) {
+        // Diminishing returns: 100% -> 50% -> 33% -> 25% ...
+        const newRepeatCount = repeatCount + 1;
+        setRepeatCount(newRepeatCount);
+        const decay = 1 / (newRepeatCount + 1);
+        finalAmount = Math.floor(amount * decay);
+        
+        // If it gets too low, maybe 0? User just said "decrease". 
+        // Let's keep it at minimum 1 if original was > 0, unless it's basically spam.
+        if (finalAmount < 1 && amount > 0) finalAmount = 0; 
+      } else {
+        // Reset
+        setLastAction(actionId);
+        setRepeatCount(0);
+      }
+    } else {
+      // If no actionId provided (e.g. passive gain), valid.
+      // But for commands we should provide it.
+    }
+
+    if (finalAmount > 0) {
+      setXp(prev => prev + finalAmount);
+    }
+  }, [lastAction, repeatCount]);
 
   const resetProgress = useCallback(() => {
     setXp(0);
