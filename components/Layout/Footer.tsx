@@ -1,7 +1,7 @@
 import React from 'react';
 import { Github, Linkedin, Facebook, Heart } from 'lucide-react';
 import { BRAND_NAME, GITHUB_URL, LINKEDIN_URL, FACEBOOK_URL } from '../../constants';
-import VisitorCounter from '../ui/VisitorCounter';
+import { VisitorCounter } from '../ui/VisitorCounter';
 
 export const Footer: React.FC = () => {
   return (
