@@ -1,14 +1,16 @@
-import React from 'react';
+import React, { Suspense, lazy } from 'react';
 import { Navbar } from './components/Layout/Navbar';
 import { Hero } from './components/Sections/Hero';
-import { About } from './components/Sections/About';
-import { Skills } from './components/Sections/Skills';
-import { Projects } from './components/Sections/Projects';
-import { Contact } from './components/Sections/Contact';
-import { Footer } from './components/Layout/Footer';
 import { CursorGlow } from './components/ui/CursorGlow';
-import { ChatWidget } from './components/ui/ChatWidget';
 import { ScrollToTop } from './components/ui/ScrollToTop';
+
+// Lazy load below-the-fold components to improve FCP/LCP
+const About = lazy(() => import('./components/Sections/About').then(module => ({ default: module.About })));
+const Skills = lazy(() => import('./components/Sections/Skills').then(module => ({ default: module.Skills })));
+const Projects = lazy(() => import('./components/Sections/Projects').then(module => ({ default: module.Projects })));
+const Contact = lazy(() => import('./components/Sections/Contact').then(module => ({ default: module.Contact })));
+const Footer = lazy(() => import('./components/Layout/Footer').then(module => ({ default: module.Footer })));
+const ChatWidget = lazy(() => import('./components/ui/ChatWidget').then(module => ({ default: module.ChatWidget })));
 
 function App() {
   return (
@@ -17,13 +19,17 @@ function App() {
       <Navbar />
       <main>
         <Hero />
-        <About />
-        <Skills />
-        <Projects />
-        <Contact />
+        <Suspense fallback={<div className="min-h-screen"></div>}>
+          <About />
+          <Skills />
+          <Projects />
+          <Contact />
+        </Suspense>
       </main>
-      <Footer />
-      <ChatWidget />
+      <Suspense fallback={null}>
+        <Footer />
+        <ChatWidget />
+      </Suspense>
       <ScrollToTop />
     </div>
   );
