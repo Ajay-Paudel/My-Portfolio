@@ -334,8 +334,13 @@ export const CodeTerminal: React.FC = () => {
 
     addToHistory('input', `user@portfolio:~$ ${rawCmd}`);
 
-    // Award XP for any valid command execution attempt
-    addXP(10);
+    // Award XP only if it matches a valid command
+    // We can do this implicitly by adding XP in the switch cases or verifying here first.
+    // For cleaner code, let's assume it's valid unless default case is hit, but default case is complex to bubble up.
+    // Simplest approach: Validate against known list or check in Default.
+    
+    // Instead of awarding upfront, let's track success.
+    let isValidCommand = true;
 
     // Handle Guess Game Difficulty Selection
     if (gameMode === 'guess_select') {
@@ -343,6 +348,8 @@ export const CodeTerminal: React.FC = () => {
       if (choice === 'exit') {
         setGameMode('none');
         addToHistory('system', 'Exited game selection.');
+        // No XP for exiting? Or small? Let's say valid.
+        addXP(5);
         return;
       }
       
@@ -362,8 +369,10 @@ export const CodeTerminal: React.FC = () => {
         setGameMode('guess');
         addToHistory('system', `🎮 ${label} mode selected!`);
         addToHistory('system', `I picked a number between 1 and ${range}. Guess it!`);
+        addXP(10);
       } else {
         addToHistory('error', 'Please type: easy, medium, hard (or 1, 2, 3)');
+        isValidCommand = false;
       }
       return;
     }
@@ -376,13 +385,19 @@ export const CodeTerminal: React.FC = () => {
           setGameMode('none');
           setGuessGame(null);
           addToHistory('system', 'Exited guessing game.');
+          addXP(5);
         } else {
            addToHistory('error', 'Please enter a valid number or type "exit" to quit.');
+           // No XP for invalid input
         }
         return;
       }
 
       if (!guessGame) return;
+
+      // Guessing is valid input even if wrong number, it awards small XP?
+      // Or just award for playing. Let's award 2 XP for a guess attempt to keep them engaged.
+      addXP(5);
 
       if (num === guessGame.target) {
         addToHistory('system', `🎉 CORRECT! The number was ${guessGame.target}. You won in ${guessGame.tries + 1} tries.`);
@@ -402,6 +417,7 @@ export const CodeTerminal: React.FC = () => {
     // Standard Commands
     switch (command) {
       case 'help':
+        addXP(10);
         addToHistory('output', (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm">
             <div className="text-yellow-400 col-span-2 md:col-span-1">--- General ---</div>
@@ -426,6 +442,7 @@ export const CodeTerminal: React.FC = () => {
         break;
 
       case 'about':
+        addXP(10);
         addToHistory('output', (
           <div className="p-2 border-l-2 border-blue-500 bg-blue-500/10">
             <div className="font-bold text-lg">👨‍💻 Ajay Paudel</div>
@@ -436,6 +453,7 @@ export const CodeTerminal: React.FC = () => {
         break;
 
       case 'skills':
+        addXP(10);
         addToHistory('output', (
           <div className="space-y-2 border p-2 border-dashed border-slate-600 rounded">
             <div><span className="text-green-400 font-bold">Frontend:</span> React, Next.js, Tailwind, HTML, CSS</div>
@@ -446,6 +464,7 @@ export const CodeTerminal: React.FC = () => {
         break;
 
       case 'projects':
+        addXP(10);
         addToHistory('output', (
           <div className="space-y-2">
             {PROJECTS.map((p, i) => (
@@ -459,14 +478,18 @@ export const CodeTerminal: React.FC = () => {
         break;
 
       case 'resume':
+        addXP(10);
         addToHistory('output', <pre className="text-[10px] md:text-xs leading-none text-slate-300 font-mono overflow-x-auto">{RESUME_ASCII}</pre>);
         break;
       
       case 'contact':
+        addXP(10);
         addToHistory('output', '📧 Email: ajayindrapaudel@gmail.com | 📍 Location: Kathmandu');
         break;
 
       case 'clear':
+        // No XP for clearing? Or small.
+        addXP(5);
         setHistory([]);
         break;
       
@@ -479,6 +502,7 @@ export const CodeTerminal: React.FC = () => {
         if (['dark', 'light', 'neon', 'hacker'].includes(argText)) {
           setTheme(argText as Theme);
           addToHistory('system', `Theme switched to ${argText}`);
+          addXP(10);
         } else {
           addToHistory('error', 'Usage: theme [dark | light | neon | hacker]');
         }
@@ -487,12 +511,14 @@ export const CodeTerminal: React.FC = () => {
       case 'matrix':
         setIsMatrix(!isMatrix);
         addToHistory('system', `Matrix mode ${!isMatrix ? 'ENABLED' : 'DISABLED'}`);
+        addXP(10);
         break;
 
       case 'ascii':
         if (!argText) {
           addToHistory('error', 'Usage: ascii [text]');
         } else {
+           addXP(15); // Creative command
            addToHistory('output', (
              <div className="text-2xl md:text-4xl font-bold tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-green-400 to-blue-500 uppercase my-2">
                {argText}
@@ -505,9 +531,11 @@ export const CodeTerminal: React.FC = () => {
         if (argText === 'snake') {
           setGameMode('snake');
           addToHistory('system', 'Starting Snake...');
+          addXP(10);
         } else if (argText.includes('tic')) {
             setGameMode('tictactoe');
             addToHistory('system', 'Starting Tic-Tac-Toe...');
+            addXP(10);
         } else if (argText === 'guess') {
           setGameMode('guess_select');
           addToHistory('system', '🎯 NUMBER GUESSING GAME');
@@ -520,12 +548,14 @@ export const CodeTerminal: React.FC = () => {
               <div className="text-slate-500 text-xs mt-2">Type: easy, medium, hard (or 1, 2, 3)</div>
             </div>
           ));
+          addXP(10);
         } else {
           addToHistory('error', 'Available games: snake, guess, tictactoe');
         }
         break;
 
       case 'hack':
+        addXP(50); // Easter egg bonus
         const hackSteps = [
           "Initiating handshake...",
           "Bypassing firewall...",
@@ -545,6 +575,7 @@ export const CodeTerminal: React.FC = () => {
           addToHistory('error', 'Usage: ai [your message]');
           break;
         }
+        addXP(20); // Higher XP for using AI
         addToHistory('system', 'Contacting OpenRouter API...');
         try {
           const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
@@ -571,21 +602,23 @@ export const CodeTerminal: React.FC = () => {
         break;
 
       // Fun Commands
-      case 'coffee': addToHistory('output', '☕ Here is your coffee. Be careful, it\'s hot!'); break;
-      case 'joke': addToHistory('output', 'Why do programmers prefer dark mode? Because light attracts bugs.'); break;
-      case 'ping': addToHistory('output', 'Pong! 🏓'); break;
-      case 'ajay?': addToHistory('output', 'He is the one writing this code right now.'); break;
-      case 'sudo': addToHistory('error', 'Permission denied: You are not root.'); break;
+      case 'coffee': addToHistory('output', '☕ Here is your coffee. Be careful, it\'s hot!'); addXP(5); break;
+      case 'joke': addToHistory('output', 'Why do programmers prefer dark mode? Because light attracts bugs.'); addXP(5); break;
+      case 'ping': addToHistory('output', 'Pong! 🏓'); addXP(5); break;
+      case 'ajay?': addToHistory('output', 'He is the one writing this code right now.'); addXP(5); break;
+      case 'sudo': addToHistory('error', 'Permission denied: You are not root.'); addXP(1); break;
       case 'rickroll': 
         addToHistory('output', 'Never gonna give you up, never gonna let you down... 🎵'); 
         window.open('https://www.youtube.com/watch?v=dQw4w9WgXcQ', '_blank');
+        addXP(50); // Prank bonus
         break;
 
-      case 'whoami': addToHistory('output', 'guest_user'); break;
+      case 'whoami': addToHistory('output', 'guest_user'); addXP(5); break;
 
       default:
+        isValidCommand = false;
         addToHistory('error', `Command not found: ${command}. Type 'help' for options.`);
-    }
+    
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
