@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Terminal, RefreshCw } from 'lucide-react';
 import { AI_CONTEXT, OPENROUTER_API_KEY, OPENROUTER_MODEL, PROJECTS } from '../../constants';
+import { TicTacToe } from './TicTacToe';
 
 // --- Types & Constants ---
 type Theme = 'dark' | 'light' | 'neon' | 'hacker';
@@ -292,7 +293,7 @@ export const CodeTerminal: React.FC = () => {
     { id: 'help-hint', type: 'system', content: `Type 'help' to see available commands.` },
   ]);
   const [theme, setTheme] = useState<Theme>('dark');
-  const [gameMode, setGameMode] = useState<'none' | 'snake' | 'guess' | 'guess_select'>('none');
+  const [gameMode, setGameMode] = useState<'none' | 'snake' | 'guess' | 'guess_select' | 'tictactoe'>('none');
   const [isMatrix, setIsMatrix] = useState(false);
   const [guessGame, setGuessGame] = useState<{ target: number, tries: number, maxRange: number } | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -389,7 +390,7 @@ export const CodeTerminal: React.FC = () => {
             <div className="md:hidden text-yellow-400 mt-2">--- Fun & Tools ---</div>
             <div><span className="text-blue-400">theme [mode]</span> : dark/light/neon/hacker</div>
             <div><span className="text-blue-400">skills</span> : Technical stack</div>
-            <div><span className="text-blue-400">game [name]</span> : snake, guess</div>
+            <div><span className="text-blue-400">game [name]</span> : snake, guess, tictactoe</div>
             <div><span className="text-blue-400">projects</span> : View work</div>
             <div><span className="text-blue-400">matrix</span> : Toggle rain</div>
             <div><span className="text-blue-400">resume</span> : View CV</div>
@@ -477,6 +478,9 @@ export const CodeTerminal: React.FC = () => {
         if (argText === 'snake') {
           setGameMode('snake');
           addToHistory('system', 'Starting Snake...');
+        } else if (argText.includes('tic')) {
+            setGameMode('tictactoe');
+            addToHistory('system', 'Starting Tic-Tac-Toe...');
         } else if (argText === 'guess') {
           setGameMode('guess_select');
           addToHistory('system', '🎯 NUMBER GUESSING GAME');
@@ -490,7 +494,7 @@ export const CodeTerminal: React.FC = () => {
             </div>
           ));
         } else {
-          addToHistory('error', 'Available games: snake, guess');
+          addToHistory('error', 'Available games: snake, guess, tictactoe');
         }
         break;
 
@@ -598,6 +602,8 @@ export const CodeTerminal: React.FC = () => {
       <div className="flex-1 relative overflow-hidden">
         {gameMode === 'snake' ? (
           <SnakeGame onExit={() => setGameMode('none')} />
+        ) : gameMode === 'tictactoe' ? (
+          <TicTacToe onExit={() => setGameMode('none')} />
         ) : (
           <div 
             ref={containerRef}
