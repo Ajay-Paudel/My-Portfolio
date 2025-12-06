@@ -69,5 +69,46 @@ export const useSound = () => {
     }
   }, []);
 
-  return { playClick, playHover };
+  const playLevelUp = useCallback(() => {
+    try {
+      const ctx = initAudio();
+      if (!ctx) return;
+
+      const now = ctx.currentTime;
+      // Simple arpeggio: C4 - E4 - G4 - C5
+      const notes = [523.25, 659.25, 783.99, 1046.50];
+      
+      notes.forEach((freq, i) => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        const startTime = now + (i * 0.1);
+
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+
+        osc.type = 'sine';
+        osc.frequency.value = freq;
+        
+        gain.gain.setValueAtTime(0.1, startTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, startTime + 0.1);
+
+        osc.start(startTime);
+        osc.stop(startTime + 0.1);
+      });
+    } catch (e) {
+      console.error("Audio playback failed", e);
+    }
+  }, []);
+
+  return { playClick, playHover, playLevelUp };
 };
+
+export const useGameSound = () => {
+  const { playClick } = useSound(); // Re-use init logic if needed, but better to duplicate for simplicity or refactor.
+  
+  // Refactor: We need access to the same audioCtx singleton.
+  // Ideally useSound should return all. I'll modify useSound above instead of creating new export.
+  return {};
+}
+
+// ... actually I should just add it to the existing hook

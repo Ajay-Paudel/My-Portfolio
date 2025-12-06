@@ -1,7 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Terminal, RefreshCw } from 'lucide-react';
+import { Terminal, RefreshCw, Trophy, Zap } from 'lucide-react';
 import { AI_CONTEXT, OPENROUTER_API_KEY, OPENROUTER_MODEL, PROJECTS } from '../../constants';
 import { TicTacToe } from './TicTacToe';
+import { useGamification } from '../../hooks/useGamification';
 
 // --- Types & Constants ---
 type Theme = 'dark' | 'light' | 'neon' | 'hacker';
@@ -12,6 +13,7 @@ interface TerminalLine {
   content: React.ReactNode;
 }
 
+// ... (ASCII Art & Components omitted for brevity, keeping existing) ...
 // --- ASCII Art & Data ---
 const ASCII_LOGO = String.raw`
     _    _             
@@ -298,12 +300,25 @@ export const CodeTerminal: React.FC = () => {
   const [guessGame, setGuessGame] = useState<{ target: number, tries: number, maxRange: number } | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
+  // Gamification Hook
+  const { level, progress, isLevelUp, addXP, resetLevelUp, resetProgress } = useGamification();
+
   // Auto-scroll
   useEffect(() => {
     if (containerRef.current) {
       containerRef.current.scrollTop = containerRef.current.scrollHeight;
     }
   }, [history, gameMode]);
+
+  // Level Up Notification Auto-hide (optional, or just let user click)
+  useEffect(() => {
+    if (isLevelUp) {
+      // Optional: Add a confetti burst here if we had a library
+      setTimeout(() => {
+        // We could auto-hide, but distinct modal is nicer
+      }, 3000);
+    }
+  }, [isLevelUp]);
 
   const addToHistory = (type: TerminalLine['type'], content: React.ReactNode) => {
     setHistory(prev => [...prev, { id: Date.now().toString() + Math.random(), type, content }]);
@@ -315,7 +330,12 @@ export const CodeTerminal: React.FC = () => {
     const command = args[0].toLowerCase();
     const argText = args.slice(1).join(' ');
 
+    if (!command) return;
+
     addToHistory('input', `user@portfolio:~$ ${rawCmd}`);
+
+    // Award XP for any valid command execution attempt
+    addXP(10);
 
     // Handle Guess Game Difficulty Selection
     if (gameMode === 'guess_select') {
@@ -366,6 +386,7 @@ export const CodeTerminal: React.FC = () => {
 
       if (num === guessGame.target) {
         addToHistory('system', `🎉 CORRECT! The number was ${guessGame.target}. You won in ${guessGame.tries + 1} tries.`);
+        addXP(50); // Bonus XP for winning
         setGameMode('none');
         setGuessGame(null);
       } else if (num < guessGame.target) {
@@ -395,6 +416,7 @@ export const CodeTerminal: React.FC = () => {
             <div><span className="text-blue-400">matrix</span> : Toggle rain</div>
             <div><span className="text-blue-400">resume</span> : View CV</div>
             <div><span className="text-blue-400">hack</span> : Simulate breach</div>
+            <div><span className="text-blue-400">ResetXP</span> : Reset Gamification</div>
             <div><span className="text-blue-400">contact</span> : Get in touch</div>
             <div><span className="text-blue-400">ai [msg]</span> : Ask AI assistant</div>
             <div><span className="text-blue-400">clear</span> : Clear screen</div>
@@ -446,6 +468,11 @@ export const CodeTerminal: React.FC = () => {
 
       case 'clear':
         setHistory([]);
+        break;
+      
+      case 'resetxp':
+        resetProgress();
+        addToHistory('system', 'XP and Level reset to 0.');
         break;
 
       case 'theme':
@@ -582,6 +609,21 @@ export const CodeTerminal: React.FC = () => {
   return (
     <div className={`w-full h-[500px] rounded-xl overflow-hidden shadow-2xl border flex flex-col relative transition-colors duration-300 ${themeStyles.bg} ${themeStyles.border} font-mono text-sm`}>
       {isMatrix && <MatrixRain />}
+
+      {/* Level Up Notification Overlay */}
+      {isLevelUp && (
+        <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-black/80 animate-in fade-in duration-500">
+           <Trophy className="w-20 h-20 text-yellow-400 animate-bounce mb-4" />
+           <h2 className="text-4xl font-bold text-yellow-500 mb-2">LEVEL UP!</h2>
+           <p className="text-white text-xl">You reached Level {level}</p>
+           <button 
+             onClick={resetLevelUp}
+             className="mt-6 px-6 py-2 bg-green-600 text-white rounded hover:bg-green-500 transition-colors"
+           >
+             CONTINUE
+           </button>
+        </div>
+      )}
       
       {/* Header */}
       <div className={`px-4 py-2 flex items-center justify-between border-b ${themeStyles.border} bg-black/10 backdrop-blur-sm z-10`}>
@@ -590,9 +632,27 @@ export const CodeTerminal: React.FC = () => {
           <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
           <div className="w-3 h-3 rounded-full bg-green-500"></div>
         </div>
-        <div className={`text-xs opacity-70 ${themeStyles.text}`}>
-          <Terminal className="w-3 h-3 inline mr-1" /> bash — 80x24
+        
+        {/* Title & XP Bar */}
+        <div className="flex items-center gap-4">
+           {/* Mobile hidden title */}
+           <div className={`hidden md:block text-xs opacity-70 ${themeStyles.text}`}>
+             <Terminal className="w-3 h-3 inline mr-1" /> bash — 80x24
+           </div>
+
+           {/* XP Widget */}
+           <div className={`flex items-center gap-2 px-2 py-0.5 rounded border border-slate-700/50 bg-black/20 ${themeStyles.text} text-xs`}>
+             <span className="font-bold text-yellow-500">LVL {level}</span>
+             <div className="w-24 h-1.5 bg-slate-700 rounded-full overflow-hidden">
+               <div 
+                 className="h-full bg-gradient-to-r from-blue-500 to-green-500 transition-all duration-300 ease-out"
+                 style={{ width: `${progress}%` }}
+               />
+             </div>
+             <Zap className="w-3 h-3 text-yellow-400 fill-yellow-400" />
+           </div>
         </div>
+
         <div className={`text-xs opacity-70 ${themeStyles.text} flex gap-2`}>
            <RefreshCw className="w-3 h-3 cursor-pointer hover:rotate-180 transition-transform" onClick={() => setHistory([])} title="Clear" />
         </div>
