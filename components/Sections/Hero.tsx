@@ -70,9 +70,9 @@ export const Hero: React.FC = () => {
           </div>
 
           <div className="flex items-center justify-center md:justify-start space-x-6 pt-4">
-            <SocialLink href={GITHUB_URL} icon={<Github className="w-5 h-5" />} />
-            <SocialLink href={LINKEDIN_URL} icon={<Linkedin className="w-5 h-5" />} />
-            <SocialLink href={FACEBOOK_URL} icon={<Facebook className="w-5 h-5" />} />
+            <SocialLink href={GITHUB_URL} icon={<Github className="w-5 h-5" />} label="GitHub" />
+            <SocialLink href={LINKEDIN_URL} icon={<Linkedin className="w-5 h-5" />} label="LinkedIn" />
+            <SocialLink href={FACEBOOK_URL} icon={<Facebook className="w-5 h-5" />} label="Facebook" />
           </div>
         </div>
 
@@ -130,12 +130,13 @@ export const Hero: React.FC = () => {
   );
 };
 
-const SocialLink: React.FC<{ href: string; icon: React.ReactNode }> = ({ href, icon }) => (
+const SocialLink: React.FC<{ href: string; icon: React.ReactNode; label: string }> = ({ href, icon, label }) => (
   <a 
     href={href} 
     target="_blank" 
     rel="noopener noreferrer"
     className="p-3 text-slate-500 dark:text-slate-400 hover:text-brand-indigo dark:hover:text-brand-accent hover:bg-brand-indigo/5 dark:hover:bg-brand-indigo/10 rounded-full transition-all duration-300 border border-transparent hover:border-brand-indigo/10 dark:hover:border-brand-indigo/20 transform hover:-translate-y-1"
+    aria-label={label}
   >
     {icon}
   </a>

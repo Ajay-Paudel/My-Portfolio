@@ -56,6 +56,7 @@ export const Navbar: React.FC = () => {
             onClick={() => { toggleTheme(); playClick(); }}
             className="p-2 rounded-full text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
             title="Toggle Theme"
+            aria-label="Toggle Theme"
           >
             {theme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
           </button>
@@ -77,6 +78,7 @@ export const Navbar: React.FC = () => {
            <button 
             onClick={() => { toggleTheme(); playClick(); }}
             className="p-2 rounded-full text-slate-500 dark:text-slate-400"
+            aria-label="Toggle Theme"
           >
             {theme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
           </button>
@@ -84,6 +86,7 @@ export const Navbar: React.FC = () => {
           <button 
             className="p-2 text-slate-600 dark:text-slate-300 hover:text-brand-indigo"
             onClick={() => { setIsMenuOpen(!isMenuOpen); playClick(); }}
+            aria-label="Toggle Menu"
           >
             {isMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
           </button>

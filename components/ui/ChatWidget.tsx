@@ -90,6 +90,7 @@ export const ChatWidget: React.FC = () => {
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="fixed bottom-8 right-6 z-50 p-4 bg-gradient-to-r from-brand-indigo to-brand-violet text-white rounded-full shadow-2xl hover:scale-110 transition-transform duration-300 group"
+        aria-label="Open Chat Assistant"
       >
         {isOpen ? <X className="w-6 h-6" /> : <Sparkles className="w-6 h-6 animate-pulse" />}
         <span className="absolute -top-2 -right-2 w-4 h-4 bg-red-500 rounded-full border-2 border-white animate-bounce" />
@@ -158,6 +159,7 @@ export const ChatWidget: React.FC = () => {
               type="submit" 
               className="absolute right-2 top-2 p-1.5 bg-brand-indigo text-white rounded-lg hover:bg-brand-violet transition-colors disabled:opacity-50"
               disabled={isLoading || !input.trim()}
+              aria-label="Send Message"
             >
               <Send className="w-4 h-4" />
             </button>

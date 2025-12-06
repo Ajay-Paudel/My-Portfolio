@@ -17,9 +17,9 @@ export const Footer: React.FC = () => {
           </div>
 
           <div className="flex space-x-6">
-            <FooterIcon href={GITHUB_URL} icon={<Github className="w-5 h-5" />} />
-            <FooterIcon href={LINKEDIN_URL} icon={<Linkedin className="w-5 h-5" />} />
-            <FooterIcon href={FACEBOOK_URL} icon={<Facebook className="w-5 h-5" />} />
+            <FooterIcon href={GITHUB_URL} icon={<Github className="w-5 h-5" />} label="GitHub" />
+            <FooterIcon href={LINKEDIN_URL} icon={<Linkedin className="w-5 h-5" />} label="LinkedIn" />
+            <FooterIcon href={FACEBOOK_URL} icon={<Facebook className="w-5 h-5" />} label="Facebook" />
           </div>
         </div>
 
@@ -39,12 +39,13 @@ export const Footer: React.FC = () => {
   );
 };
 
-const FooterIcon: React.FC<{ href: string; icon: React.ReactNode }> = ({ href, icon }) => (
+const FooterIcon: React.FC<{ href: string; icon: React.ReactNode; label: string }> = ({ href, icon, label }) => (
   <a 
     href={href} 
     target="_blank"
     rel="noopener noreferrer"
     className="text-slate-400 hover:text-white hover:text-brand-indigo dark:hover:text-brand-accent transition-all duration-300 transform hover:scale-110"
+    aria-label={label}
   >
     {icon}
   </a>
