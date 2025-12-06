@@ -1,0 +1,8 @@
+{
+  "rules": {
+    "visitors": {
+      ".read": true,
+      ".write": true
+    }
+  }
+}
