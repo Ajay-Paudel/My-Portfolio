@@ -1,12 +1,28 @@
 import { useCallback } from 'react';
 
+// Singleton context to avoid creating multiple instances
+let audioCtx: AudioContext | null = null;
+
 export const useSound = () => {
+  const initAudio = () => {
+    if (!audioCtx) {
+      const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+      if (AudioContext) {
+        audioCtx = new AudioContext();
+      }
+    }
+    // Resume context if suspended (common browser policy)
+    if (audioCtx && audioCtx.state === 'suspended') {
+      audioCtx.resume();
+    }
+    return audioCtx;
+  };
+
   const playClick = useCallback(() => {
     try {
-      const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
-      if (!AudioContext) return;
-      
-      const ctx = new AudioContext();
+      const ctx = initAudio();
+      if (!ctx) return;
+
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
 
@@ -28,11 +44,12 @@ export const useSound = () => {
   }, []);
 
   const playHover = useCallback(() => {
-     try {
-      const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
-      if (!AudioContext) return;
+    // Only play hover sounds if audio context is explicitly initialized and running
+    // This prevents "AudioContext was prevented from starting" warnings on initial page load hover
+    if (!audioCtx || audioCtx.state !== 'running') return;
 
-      const ctx = new AudioContext();
+    try {
+      const ctx = audioCtx;
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
 
