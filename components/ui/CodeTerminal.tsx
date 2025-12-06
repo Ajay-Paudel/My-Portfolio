@@ -4,6 +4,7 @@ import { AI_CONTEXT, OPENROUTER_API_KEY, OPENROUTER_MODEL, PROJECTS } from '../.
 import { TicTacToe } from './TicTacToe';
 import { useGamification } from '../../hooks/useGamification';
 import { useLeaderboard } from '../../hooks/useLeaderboard';
+import { DinoGame } from './DinoGame';
 
 // --- Types & Constants ---
 type Theme = 'dark' | 'light' | 'neon' | 'hacker';
@@ -306,12 +307,14 @@ export const CodeTerminal = () => {
   ]);
   const [theme, setTheme] = useState<Theme>('dark');
   const [isMatrix, setIsMatrix] = useState(false);
-  const [gameMode, setGameMode] = useState<'none' | 'snake' | 'tictactoe' | 'guess' | 'guess_select'>('none');
+  const [gameMode, setGameMode] = useState<'none' | 'snake' | 'tictactoe' | 'guess' | 'guess_select' | 'dino'>('none');
   const [guessGame, setGuessGame] = useState<{ target: number; tries: number; maxRange: number } | null>(null);
 
   // Gamification & Leaderboard
   const { level, xp, progress, isLevelUp, addXP, resetLevelUp, resetProgress } = useGamification();
   const { leaderboard, submitScore, userRank, loading: loadingLeaderboard, userId } = useLeaderboard();
+
+
 
   // Auto-scroll
   useEffect(() => {
@@ -329,17 +332,16 @@ export const CodeTerminal = () => {
     const args = command.split(' ');
     // Validation
     if (!command) return;
-
-    const cmd = args[0]; // for clarity though original used simple 'command' switch
-    const argText = args.slice(1).join(' '); // used in some commands
-
-
+    
     addToHistory('input', `user@portfolio:~$ ${rawCmd}`);
 
-    // Award XP only if it matches a valid command
     let isValidCommand = true;
 
+    const cmd = args[0]; 
+    const argText = args.slice(1).join(' '); 
+
     // Handle Guess Game Difficulty Selection
+
     if (gameMode === 'guess_select') {
       const choice = cmd.toLowerCase().trim();
       if (choice === 'exit') {
@@ -430,7 +432,7 @@ export const CodeTerminal = () => {
             <div className="md:hidden text-yellow-400 mt-2">--- Fun & Tools ---</div>
             <div><span className="text-blue-400">theme [mode]</span> : dark/light/neon/hacker</div>
             <div><span className="text-blue-400">skills</span> : Technical stack</div>
-            <div><span className="text-blue-400">game [name]</span> : snake, guess, tictactoe</div>
+            <div><span className="text-blue-400">game [name]</span> : snake, guess, tictactoe, dino</div>
             <div><span className="text-blue-400">projects</span> : View work</div>
             <div><span className="text-blue-400">leaderboard</span> : View Top 10</div>
             <div><span className="text-blue-400">stats</span> : Server Status</div>
@@ -553,8 +555,12 @@ export const CodeTerminal = () => {
             </div>
           ));
           addXP(5, 'start_guess');
+        } else if (argText === 'dino') {
+            setGameMode('dino');
+            addToHistory('system', '🦖 Starting Dino Runner...');
+            addXP(5, 'start_dino');
         } else {
-          addToHistory('error', 'Available games: snake, guess, tictactoe');
+          addToHistory('error', 'Available games: snake, guess, tictactoe, dino');
         }
         break;
 
@@ -801,11 +807,16 @@ export const CodeTerminal = () => {
 
       {/* Content Area */}
       <div className="flex-1 relative overflow-hidden">
-        {gameMode === 'snake' ? (
+        {gameMode === 'snake' && (
           <SnakeGame onExit={() => setGameMode('none')} addXP={addXP} />
-        ) : gameMode === 'tictactoe' ? (
+        )}
+        {gameMode === 'tictactoe' && (
           <TicTacToe onExit={() => setGameMode('none')} addXP={addXP} />
-        ) : (
+        )}
+        {gameMode === 'dino' && (
+          <DinoGame onExit={() => setGameMode('none')} addXP={addXP} />
+        )}
+        {gameMode === 'none' && ( // This condition now explicitly renders the terminal
           <div 
             ref={containerRef}
             className={`absolute inset-0 p-4 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-600 ${themeStyles.text}`}
