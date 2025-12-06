@@ -618,7 +618,7 @@ export const CodeTerminal: React.FC = () => {
       default:
         isValidCommand = false;
         addToHistory('error', `Command not found: ${command}. Type 'help' for options.`);
-    
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
