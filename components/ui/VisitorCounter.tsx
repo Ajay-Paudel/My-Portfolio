@@ -15,110 +15,102 @@ import { Users, Eye } from 'lucide-react';
 import { FIREBASE_CONFIG } from '../../constants';
 
 // Initialize Firebase only once
-let app;
-let db: any;
 
-try {
-  if (getApps().length === 0) {
-    app = initializeApp(FIREBASE_CONFIG);
-  } else {
-    app = getApp();
-  }
-  db = getDatabase(app);
-} catch (error) {
-  console.error("Firebase initialization failed:", error);
-}
-
-const VisitorCounter = () => {
-  const [onlineUsers, setOnlineUsers] = useState<number>(1);
+export const VisitorCounter: React.FC = () => {
+  const [onlineCount, setOnlineCount] = useState<number>(0);
   const [totalVisits, setTotalVisits] = useState<number>(0);
-  const [mounted, setMounted] = useState(false);
+  const [error, setError] = useState<boolean>(false);
 
   useEffect(() => {
-    setMounted(true);
-    if (!db) return;
+    // If we already detected an error (like permission denied), don't try again
+    if (error) return;
 
-    // References
-    const connectionsRef = ref(db, 'visitors/connections');
-    const lastOnlineRef = ref(db, 'visitors/connections');
-    const totalVisitsRef = ref(db, 'visitors/total');
-    const connectedRef = ref(db, '.info/connected');
+    try {
+      // References
+      const connectedRef = ref(database, '.info/connected');
+      const connectionsRef = ref(database, 'visitors/connections');
+      const totalVisitsRef = ref(database, 'visitors/total');
 
-    // 1. Monitor connection state
-    const unsubscribeConnected = onValue(connectedRef, (snap) => {
-      if (snap.val() === true) {
-        // We're connected (or reconnected)!
-        
-        // Create a reference to this user's specific connection
-        const con = push(connectionsRef);
+      // Handle presence (online users)
+      const unsubscribeConnected = onValue(connectedRef, (snap) => {
+        if (snap.val() === true) {
+          const con = push(connectionsRef);
+          
+          // When I disconnect, remove this device
+          onDisconnect(con).remove().catch(err => {
+             if (err.code === 'PERMISSION_DENIED') setError(true);
+          });
 
-        // When I disconnect, remove this device
-        onDisconnect(con).remove();
-
-        // Add this device to our connections list
-        set(con, {
-            timestamp: serverTimestamp(),
-            userAgent: navigator.userAgent
-        });
-        
-        // Handle "Total Visits" - Using a transaction to ensure accuracy
-        // Only increment if we haven't counted this session yet
-        const sessionKey = 'has_visited_portfolio';
-        if (!sessionStorage.getItem(sessionKey)) {
-            runTransaction(totalVisitsRef, (currentTotal) => {
-                return (currentTotal || 0) + 1;
-            }).then(() => {
-                sessionStorage.setItem(sessionKey, 'true');
-            });
+          // Add this device to the connections list
+          set(con, {
+            joined: serverTimestamp(),
+            agent: navigator.userAgent
+          }).catch(err => {
+             if (err.code === 'PERMISSION_DENIED') setError(true);
+          });
         }
+      }, (err) => {
+        console.error("Firebase Connected Error:", err);
+        if (err.message.includes('permission_denied')) setError(true);
+      });
+
+      // Count online users
+      const unsubscribeOnline = onValue(connectionsRef, (snap) => {
+        setOnlineCount(snap.size);
+      }, (err) => {
+         if (err.message.includes('permission_denied')) setError(true);
+      });
+
+      // Increment total visits (transactional)
+      const sessionKey = 'portfolio_visit_session';
+      if (!sessionStorage.getItem(sessionKey)) {
+        sessionStorage.setItem(sessionKey, 'true');
+        runTransaction(totalVisitsRef, (currentVisits) => {
+          return (currentVisits || 0) + 1;
+        }).catch(err => {
+          if (err.message.includes('permission_denied')) setError(true);
+        });
       }
-    });
 
-    // 2. Count online users
-    // Just counting the number of child nodes in 'visitors/connections'
-    const unsubscribeOnline = onValue(connectionsRef, (snap) => {
-      setOnlineUsers(snap.size || 1);
-    });
+      // Read total visits
+      const unsubscribeTotal = onValue(totalVisitsRef, (snap) => {
+        setTotalVisits(snap.val() || 0);
+      }, (err) => {
+        if (err.message.includes('permission_denied')) setError(true);
+      });
 
-    // 3. Monitor total visits
-    const unsubscribeTotal = onValue(totalVisitsRef, (snap) => {
-      setTotalVisits(snap.val() || 0);
-    });
+      return () => {
+        unsubscribeConnected();
+        unsubscribeOnline();
+        unsubscribeTotal();
+      };
+    } catch (err) {
+      console.error("VisitorCounter Setup Error:", err);
+      setError(true);
+    }
+  }, [error]);
 
-    return () => {
-      unsubscribeConnected();
-      unsubscribeOnline();
-      unsubscribeTotal();
-    };
-  }, []);
-
-  if (!mounted) return null;
+  if (error) {
+    // Fallback UI or return null to hide
+    return null; 
+  }
 
   return (
-    <div className="flex flex-col sm:flex-row items-center gap-4 py-2 px-4 bg-slate-100 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700 shadow-sm backdrop-blur-sm">
-      <div className="flex items-center gap-2" title="Users currently online">
-        <div className="relative">
-          <Users className="w-4 h-4 text-green-500" />
-          <span className="absolute -top-1 -right-1 flex h-2 w-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
-          </span>
-        </div>
-        <span className="text-sm font-medium text-slate-600 dark:text-slate-300">
-          <span className="font-bold text-slate-900 dark:text-white tabular-nums">{onlineUsers}</span> Online
+    <div className="flex items-center gap-4 text-xs font-mono text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-800/50 px-3 py-1.5 rounded-full border border-slate-200 dark:border-slate-700">
+      <div className="flex items-center gap-1.5" title="Online Users">
+        <span className="relative flex h-2 w-2">
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+          <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
         </span>
+        <span className="font-semibold">{onlineCount}</span>
+        <span className="hidden sm:inline">online</span>
       </div>
-
-      <div className="hidden sm:block w-px h-4 bg-slate-300 dark:bg-slate-600"></div>
-
-      <div className="flex items-center gap-2" title="Total unique visits">
-        <Eye className="w-4 h-4 text-brand-indigo" />
-        <span className="text-sm font-medium text-slate-600 dark:text-slate-300">
-          <span className="font-bold text-slate-900 dark:text-white tabular-nums">{totalVisits.toLocaleString()}</span> Visits
-        </span>
+      <div className="w-px h-4 bg-slate-300 dark:bg-slate-600"></div>
+      <div className="flex items-center gap-1.5" title="Total Visits">
+        <Eye className="w-3 h-3" />
+        <span className="font-semibold">{totalVisits.toLocaleString()}</span>
+        <span className="hidden sm:inline">visits</span>
       </div>
     </div>
   );
-};
-
 export default VisitorCounter;
