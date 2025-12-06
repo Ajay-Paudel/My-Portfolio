@@ -1,6 +1,7 @@
 import React from 'react';
 import { Github, Linkedin, Facebook, Heart } from 'lucide-react';
 import { BRAND_NAME, GITHUB_URL, LINKEDIN_URL, FACEBOOK_URL } from '../../constants';
+import VisitorCounter from '../ui/VisitorCounter';
 
 export const Footer: React.FC = () => {
   return (
@@ -20,6 +21,11 @@ export const Footer: React.FC = () => {
             <FooterIcon href={LINKEDIN_URL} icon={<Linkedin className="w-5 h-5" />} />
             <FooterIcon href={FACEBOOK_URL} icon={<Facebook className="w-5 h-5" />} />
           </div>
+        </div>
+
+        {/* Visitor Counter */}
+        <div className="mt-8 flex justify-center">
+          <VisitorCounter />
         </div>
         
         <div className="mt-12 pt-8 border-t border-slate-800 flex flex-col md:flex-row justify-between items-center text-sm">

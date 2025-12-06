@@ -5,6 +5,17 @@ import { Project, SkillCategory, Highlight, NavLink } from './types';
 export const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || '';
 export const OPENROUTER_MODEL = process.env.OPENROUTER_MODEL || 'amazon/nova-2-lite-v1:free';
 
+// Firebase Configuration - for Visitor Counter
+export const FIREBASE_CONFIG = {
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || '',
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || '',
+  databaseURL: import.meta.env.VITE_FIREBASE_DATABASE_URL || '',
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || '',
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || '',
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || '',
+  appId: import.meta.env.VITE_FIREBASE_APP_ID || '',
+};
+
 export const BRAND_NAME = "Ajay Paudel";
 export const TAGLINE = "Creating Digital Experiences That Inspire";
 export const RESUME_URL = "/image/MY_CV.pdf";
