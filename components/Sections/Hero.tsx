@@ -43,9 +43,9 @@ export const Hero: React.FC = () => {
           </div>
 
           <div className="space-y-4">
-            <h2 className="text-xl md:text-2xl font-medium text-slate-500 dark:text-slate-400">
+            <p className="text-xl md:text-2xl font-medium text-slate-500 dark:text-slate-400">
               Hello, I'm
-            </h2>
+            </p>
             <h1 className="text-5xl md:text-7xl lg:text-8xl font-heading font-bold tracking-tight text-slate-900 dark:text-white leading-tight">
               {BRAND_NAME}
             </h1>
