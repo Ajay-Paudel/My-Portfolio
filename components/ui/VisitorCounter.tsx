@@ -15,6 +15,19 @@ import { Users, Eye } from 'lucide-react';
 import { FIREBASE_CONFIG } from '../../constants';
 
 // Initialize Firebase only once
+let app;
+let database: any;
+
+try {
+  if (getApps().length === 0) {
+    app = initializeApp(FIREBASE_CONFIG);
+  } else {
+    app = getApp();
+  }
+  database = getDatabase(app);
+} catch (error) {
+  console.error("Firebase initialization failed:", error);
+}
 
 export const VisitorCounter: React.FC = () => {
   const [onlineCount, setOnlineCount] = useState<number>(0);
@@ -22,8 +35,8 @@ export const VisitorCounter: React.FC = () => {
   const [error, setError] = useState<boolean>(false);
 
   useEffect(() => {
-    // If we already detected an error (like permission denied), don't try again
-    if (error) return;
+    // If we already detected an error (like permission denied) or db init failed, don't try
+    if (error || !database) return;
 
     try {
       // References
@@ -37,7 +50,7 @@ export const VisitorCounter: React.FC = () => {
           const con = push(connectionsRef);
           
           // When I disconnect, remove this device
-          onDisconnect(con).remove().catch(err => {
+          onDisconnect(con).remove().catch((err: any) => {
              if (err.code === 'PERMISSION_DENIED') setError(true);
           });
 
@@ -45,7 +58,7 @@ export const VisitorCounter: React.FC = () => {
           set(con, {
             joined: serverTimestamp(),
             agent: navigator.userAgent
-          }).catch(err => {
+          }).catch((err: any) => {
              if (err.code === 'PERMISSION_DENIED') setError(true);
           });
         }
@@ -67,8 +80,8 @@ export const VisitorCounter: React.FC = () => {
         sessionStorage.setItem(sessionKey, 'true');
         runTransaction(totalVisitsRef, (currentVisits) => {
           return (currentVisits || 0) + 1;
-        }).catch(err => {
-          if (err.message.includes('permission_denied')) setError(true);
+        }).catch((err: any) => {
+          if (err.message && err.message.includes('permission_denied')) setError(true);
         });
       }
 
@@ -90,8 +103,7 @@ export const VisitorCounter: React.FC = () => {
     }
   }, [error]);
 
-  if (error) {
-    // Fallback UI or return null to hide
+  if (error || !database) {
     return null; 
   }
 
@@ -113,4 +125,4 @@ export const VisitorCounter: React.FC = () => {
       </div>
     </div>
   );
-export default VisitorCounter;
+};
