@@ -1,28 +1,43 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef } from 'react';
 
 export const CursorGlow: React.FC = () => {
-  const [position, setPosition] = useState({ x: -100, y: -100 });
-  const [isVisible, setIsVisible] = useState(false);
+  const cursorRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    const cursor = cursorRef.current;
+    if (!cursor) return;
+
+    let isVisible = false;
+
     const updateCursor = (e: MouseEvent) => {
-      setPosition({ x: e.clientX, y: e.clientY });
-      if (!isVisible) setIsVisible(true);
+      if (!isVisible) {
+        cursor.style.opacity = '1';
+        isVisible = true;
+      }
+      cursor.style.transform = `translate3d(${e.clientX}px, ${e.clientY}px, 0) translate(-50%, -50%)`;
     };
 
-    window.addEventListener('mousemove', updateCursor);
-    return () => window.removeEventListener('mousemove', updateCursor);
-  }, [isVisible]);
+    const handleMouseLeave = () => {
+      cursor.style.opacity = '0';
+      isVisible = false;
+    };
 
-  if (typeof window === 'undefined') return null;
+    window.addEventListener('mousemove', updateCursor, { passive: true });
+    document.addEventListener('mouseleave', handleMouseLeave);
+    
+    return () => {
+      window.removeEventListener('mousemove', updateCursor);
+      document.removeEventListener('mouseleave', handleMouseLeave);
+    };
+  }, []);
 
   return (
     <div 
-      className="cursor-glow fixed top-0 left-0 pointer-events-none hidden md:block"
+      ref={cursorRef}
+      className="cursor-glow fixed top-0 left-0 pointer-events-none hidden md:block opacity-0 will-change-transform"
       style={{
-        left: `${position.x}px`,
-        top: `${position.y}px`,
-        opacity: isVisible ? 1 : 0,
+        // Initial position off-screen or handled via transform
+        transform: 'translate3d(-100px, -100px, 0) translate(-50%, -50%)' 
       }}
     />
   );
