@@ -62,6 +62,19 @@
       href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Poppins:wght@400;500;600;700;800&family=Space+Grotesk:wght@400;500;700&display=swap"
       rel="stylesheet"
     />
+    <script>
+      (function() {
+        try {
+          var localTheme = localStorage.getItem('theme');
+          var supportDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches;
+          if (localTheme === 'dark' || (localTheme !== 'light' && supportDarkMode)) {
+            document.documentElement.classList.add('dark');
+          } else {
+            document.documentElement.classList.remove('dark');
+          }
+        } catch (e) {}
+      })();
+    </script>
   </head>
   <body>
     <div id="root">
