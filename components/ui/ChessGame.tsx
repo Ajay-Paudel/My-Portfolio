@@ -68,7 +68,8 @@ const createInitialBoard = (): Board => {
 };
 
 // Convert board position to FEN
-const boardToFEN = (board: Board, turn: PieceColor): string => {
+// Convert board position to FEN
+const boardToFEN = (board: Board, turn: PieceColor, castlingRights: { whiteKing: boolean, whiteQueen: boolean, blackKing: boolean, blackQueen: boolean }): string => {
   let fen = '';
   
   for (let row = 0; row < 8; row++) {
@@ -91,7 +92,14 @@ const boardToFEN = (board: Board, turn: PieceColor): string => {
     if (row < 7) fen += '/';
   }
   
-  fen += ` ${turn === 'white' ? 'w' : 'b'} KQkq - 0 1`;
+  let castling = '';
+  if (castlingRights.whiteKing) castling += 'K';
+  if (castlingRights.whiteQueen) castling += 'Q';
+  if (castlingRights.blackKing) castling += 'k';
+  if (castlingRights.blackQueen) castling += 'q';
+  if (castling === '') castling = '-';
+  
+  fen += ` ${turn === 'white' ? 'w' : 'b'} ${castling} - 0 1`;
   return fen;
 };
 
@@ -353,7 +361,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, addXP }) => {
 
   // Call Chess API for best move with retry logic
   const getAIMove = useCallback(async (board: Board, diff: Difficulty): Promise<string | null> => {
-    const fen = boardToFEN(board, 'black');
+    const fen = boardToFEN(board, 'black', castlingRights);
     const config = DIFFICULTY_CONFIG[diff];
     const depth = diff === 'custom' ? customDepth : config.depth;
     
@@ -371,7 +379,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, addXP }) => {
         
         // Create AbortController for timeout
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+        const timeoutId = setTimeout(() => controller.abort(), depth > 12 ? 45000 : 15000); // 45s for deep, 15s for shallow
         
         const response = await fetch('https://chess-api.com/v1', {
           method: 'POST',
@@ -381,7 +389,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, addXP }) => {
           body: JSON.stringify({
             fen,
             depth,
-            maxThinkingTime: Math.max(50, depth * 5),
+            maxThinkingTime: Math.max(50, depth * 20), // Increased thinking time for better results
           }),
           signal: controller.signal,
         });
@@ -426,7 +434,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, addXP }) => {
     }
     
     return null;
-  }, [customDepth, getAllLegalMoves]);
+  }, [customDepth, getAllLegalMoves, castlingRights]);
 
   // Make AI move
   const makeAIMove = useCallback(async (board: Board, diff: Difficulty) => {
@@ -836,8 +844,8 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, addXP }) => {
               {gameStatus === 'checkmate' && (
                 <div className="text-center">
                   <div className="text-2xl font-bold text-red-400">Checkmate!</div>
-                  <div className="text-slate-300">{currentTurn === 'white' ? 'Stockfish' : 'You'} wins!</div>
-                  {currentTurn === 'white' && difficulty === 'dark' && (
+                  <div className="text-slate-300">{currentTurn === 'white' ? 'You' : 'Stockfish'} win!</div>
+                  {currentTurn !== 'white' && difficulty === 'dark' && (
                     <div className="text-purple-400 text-sm mt-1">The darkness consumed you... 💀</div>
                   )}
                 </div>
