@@ -113,8 +113,8 @@ export const useGamification = (): GamificationState => {
       }
     }
 
-    if (finalAmount > 0) {
-      setXp(prev => prev + finalAmount);
+    if (finalAmount !== 0) {
+      setXp(prev => Math.max(0, prev + finalAmount));
     }
   }, [actionHistory]);
 

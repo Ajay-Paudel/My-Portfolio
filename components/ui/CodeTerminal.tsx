@@ -6,6 +6,7 @@ import { useGamification } from '../../hooks/useGamification';
 import { useLeaderboard } from '../../hooks/useLeaderboard';
 import { DinoGame } from './DinoGame';
 import { ChessGame } from './ChessGame';
+import { EncryptedChat } from './EncryptedChat';
 
 // --- Types & Constants ---
 type Theme = 'dark' | 'light' | 'neon' | 'hacker';
@@ -312,9 +313,10 @@ export const CodeTerminal = () => {
   ]);
   const [theme, setTheme] = useState<Theme>('dark');
   const [isMatrix, setIsMatrix] = useState(false);
+  const [showChess, setShowChess] = useState(false);
+  const [showChat, setShowChat] = useState(false);
   const [gameMode, setGameMode] = useState<'none' | 'snake' | 'tictactoe' | 'guess' | 'guess_select' | 'dino'>('none');
   const [guessGame, setGuessGame] = useState<{ target: number; tries: number; maxRange: number } | null>(null);
-  const [showChess, setShowChess] = useState(false);
 
   // Gamification & Leaderboard
   const { level, xp, progress, isLevelUp, addXP, resetLevelUp, resetProgress } = useGamification();
@@ -735,6 +737,21 @@ export const CodeTerminal = () => {
         }
         break;
 
+        break;
+
+      case 'chat':
+        if (xp >= 15) {
+          addXP(-15, 'chat_access');
+          setShowChat(true);
+          addToHistory('system', 'INITIALIZING SECURE LINK...');
+          addToHistory('system', 'ACCESS GRANTED. [ -15 XP ]');
+          addToHistory('system', 'Launching P2P Relay Node...');
+        } else {
+          addToHistory('error', 'ACCESS DENIED: Insufficient processing power.');
+          addToHistory('system', `Required: 15 XP | Current: ${xp} XP`);
+        }
+        break;
+
       default:
         isValidCommand = false;
         addToHistory('error', `Command not found: ${command}. Type 'help' for options.`);
@@ -863,6 +880,14 @@ export const CodeTerminal = () => {
         <ChessGame 
           onClose={() => setShowChess(false)} 
           addXP={addXP}
+        />
+      )}
+
+      {/* Encrypted Chat Interface */}
+      {showChat && (
+        <EncryptedChat 
+          onClose={() => setShowChat(false)}
+          currentUserXP={xp}
         />
       )}
     </div>
