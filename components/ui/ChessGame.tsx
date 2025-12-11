@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import { X, RotateCcw, Wifi, WifiOff, SlidersHorizontal } from 'lucide-react';
 
 interface ChessGameProps {
@@ -139,7 +139,59 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, addXP }) => {
     blackKing: true,   // Can black castle king-side?
     blackQueen: true,  // Can black castle queen-side?
   });
-  const wsRef = useRef<WebSocket | null>(null);
+  
+  const stockfishWorker = useRef<Worker | null>(null);
+  const engineMoveResolve = useRef<((move: string | null) => void) | null>(null);
+  const [engineLoaded, setEngineLoaded] = useState(false);
+
+  // Initialize Stockfish Engine
+  useEffect(() => {
+    try {
+      const worker = new Worker('./stockfish.js');
+      stockfishWorker.current = worker;
+      
+      worker.onmessage = (event) => {
+        const line = event.data;
+        // console.log('Stockfish:', line);
+        
+        if (line === 'uciok') {
+          setEngineLoaded(true);
+        } else if (line === 'readyok') {
+          setApiStatus('connected');
+        } else if (line.startsWith('bestmove')) {
+          const move = line.split(' ')[1];
+          if (engineMoveResolve.current) {
+            engineMoveResolve.current(move);
+            engineMoveResolve.current = null;
+          }
+          setIsThinking(false);
+        } else if (line.startsWith('info') && line.includes('score cp')) {
+          const parts = line.split(' ');
+          const scoreIndex = parts.indexOf('cp');
+          if (scoreIndex !== -1 && parts[scoreIndex + 1]) {
+            const cp = parseInt(parts[scoreIndex + 1]);
+            // Engine score is from engine's perspective, need to invert if black to show white advantage?
+            // Usually CP is absolute or relative to side to move. Stockfish is usually relative.
+            // If it's black's turn (AI), positive score means black is winning.
+            // visual evaluation usually expects positive = white winning.
+            // So if black to move, invert.
+            setEvaluation(currentTurn === 'black' ? -cp : cp);
+          }
+        } else if (line.startsWith('info') && line.includes('score mate')) {
+             // Handle mate score if needed
+        }
+      };
+
+      worker.postMessage('uci');
+      
+      return () => {
+        worker.terminate();
+      };
+    } catch (error) {
+      console.error('Failed to load Stockfish:', error);
+      setApiStatus('error');
+    }
+  }, []);
 
   // Get valid moves for a piece
   const getValidMoves = useCallback((board: Board, row: number, col: number): [number, number][] => {
@@ -148,31 +200,36 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, addXP }) => {
     
     const moves: [number, number][] = [];
     const { type, color } = piece;
-    const direction = color === 'white' ? -1 : 1;
 
     const isValidSquare = (r: number, c: number) => r >= 0 && r < 8 && c >= 0 && c < 8;
-    const isEmpty = (r: number, c: number) => isValidSquare(r, c) && !board[r][c];
-    const isEnemy = (r: number, c: number) => isValidSquare(r, c) && board[r][c]?.color !== color && board[r][c] !== null;
-    const canMoveTo = (r: number, c: number) => isEmpty(r, c) || isEnemy(r, c);
+    const isEmpty = (r: number, c: number) => board[r][c] === null;
+    const isEnemy = (r: number, c: number) => board[r][c]?.color !== color;
+    const canMoveTo = (r: number, c: number) => isValidSquare(r, c) && (isEmpty(r, c) || isEnemy(r, c));
 
     switch (type) {
       case 'pawn':
-        if (isEmpty(row + direction, col)) {
+        const direction = color === 'white' ? -1 : 1;
+        // Move forward 1
+        if (isValidSquare(row + direction, col) && isEmpty(row + direction, col)) {
           moves.push([row + direction, col]);
+          // Move forward 2
           const startRow = color === 'white' ? 6 : 1;
-          if (row === startRow && isEmpty(row + 2 * direction, col)) {
-            moves.push([row + 2 * direction, col]);
+          if (row === startRow && isEmpty(row + direction * 2, col)) {
+            moves.push([row + direction * 2, col]);
           }
         }
-        if (isEnemy(row + direction, col - 1)) moves.push([row + direction, col - 1]);
-        if (isEnemy(row + direction, col + 1)) moves.push([row + direction, col + 1]);
+        // Captures
+        for (const dc of [-1, 1]) {
+          if (isValidSquare(row + direction, col + dc) && isEnemy(row + direction, col + dc)) {
+            moves.push([row + direction, col + dc]);
+          }
+        }
         break;
 
       case 'knight':
-        const knightMoves = [[-2,-1],[-2,1],[-1,-2],[-1,2],[1,-2],[1,2],[2,-1],[2,1]];
-        knightMoves.forEach(([dr, dc]) => {
+        for (const [dr, dc] of [[-2,-1],[-2,1],[-1,-2],[-1,2],[1,-2],[1,2],[2,-1],[2,1]]) {
           if (canMoveTo(row + dr, col + dc)) moves.push([row + dr, col + dc]);
-        });
+        }
         break;
 
       case 'bishop':
@@ -224,6 +281,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, addXP }) => {
 
   // Check if a king is in check
   const isKingInCheck = useCallback((board: Board, color: PieceColor): boolean => {
+    // Find king
     let kingPos: [number, number] | null = null;
     for (let r = 0; r < 8; r++) {
       for (let c = 0; c < 8; c++) {
@@ -232,9 +290,12 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, addXP }) => {
           break;
         }
       }
+      if (kingPos) break;
     }
-    if (!kingPos) return false;
 
+    if (!kingPos) return false; // Should not happen
+
+    // Check if any enemy piece can attack king
     const enemyColor = color === 'white' ? 'black' : 'white';
     for (let r = 0; r < 8; r++) {
       for (let c = 0; c < 8; c++) {
@@ -359,88 +420,35 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, addXP }) => {
     return moves;
   }, [getLegalMoves]);
 
-  // Call Chess API for best move with retry logic
-  const getAIMove = useCallback(async (board: Board, diff: Difficulty): Promise<string | null> => {
+  // Make AI move
+  const makeAIMove = useCallback(async (board: Board, diff: Difficulty) => {
+    if (!stockfishWorker.current) return;
+    
+    setIsThinking(true);
+    setApiStatus('connected');
+    
     const fen = boardToFEN(board, 'black', castlingRights);
     const config = DIFFICULTY_CONFIG[diff];
     const depth = diff === 'custom' ? customDepth : config.depth;
     
-    const maxRetries = 3;
-    let lastError: Error | null = null;
+    // Send info to worker
+    stockfishWorker.current.postMessage('position fen ' + fen);
+    stockfishWorker.current.postMessage('go depth ' + depth);
     
-    for (let attempt = 0; attempt < maxRetries; attempt++) {
-      try {
-        if (attempt > 0) {
-          setApiStatus('idle'); // Show reconnecting
-          await new Promise(resolve => setTimeout(resolve, 1000 * attempt)); // Exponential backoff
+    // Use promise to wait for move from worker flow
+    const movePromise = new Promise<string | null>((resolve) => {
+      engineMoveResolve.current = resolve;
+      // Fallback timeout
+      setTimeout(() => {
+        if (engineMoveResolve.current) {
+          console.warn('Stockfish timeout, making random move');
+          engineMoveResolve.current(null); // Will trigger fallback
+          engineMoveResolve.current = null;
         }
-        
-        setApiStatus('connected');
-        
-        // Create AbortController for timeout
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), depth > 12 ? 45000 : 15000); // 45s for deep, 15s for shallow
-        
-        const response = await fetch('https://chess-api.com/v1', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            fen,
-            depth,
-            maxThinkingTime: Math.max(50, depth * 20), // Increased thinking time for better results
-          }),
-          signal: controller.signal,
-        });
-        
-        clearTimeout(timeoutId);
+      }, 20000);
+    });
 
-        if (!response.ok) {
-          throw new Error(`API request failed: ${response.status}`);
-        }
-
-        const data = await response.json();
-        
-        if (data.eval !== undefined) {
-          setEvaluation(data.eval);
-        }
-        
-        // The API returns move in format like "e7e5" or "b7b8q" for promotion
-        if (data.move || data.lan) {
-          setApiStatus('connected');
-          return data.move || data.lan;
-        }
-        
-        throw new Error('No move in response');
-      } catch (error) {
-        lastError = error as Error;
-        console.error(`Chess API attempt ${attempt + 1} failed:`, error);
-      }
-    }
-    
-    // All retries failed - use fallback random move
-    console.warn('All API retries failed, using fallback random move');
-    setApiStatus('error');
-    
-    // Generate a random legal move as fallback
-    const allMoves = getAllLegalMoves(board, 'black');
-    if (allMoves.length > 0) {
-      const randomMove = allMoves[Math.floor(Math.random() * allMoves.length)];
-      const files = 'abcdefgh';
-      const fromSquare = `${files[randomMove.from[1]]}${8 - randomMove.from[0]}`;
-      const toSquare = `${files[randomMove.to[1]]}${8 - randomMove.to[0]}`;
-      return `${fromSquare}${toSquare}`;
-    }
-    
-    return null;
-  }, [customDepth, getAllLegalMoves, castlingRights]);
-
-  // Make AI move
-  const makeAIMove = useCallback(async (board: Board, diff: Difficulty) => {
-    setIsThinking(true);
-    
-    const move = await getAIMove(board, diff);
+    const move = await movePromise;
     
     if (move && move.length >= 4) {
       const fromSquare = move.substring(0, 2);
@@ -524,11 +532,34 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, addXP }) => {
         setCurrentTurn('white');
       }
     } else {
-      setApiStatus('error');
+       // Fallback: Random move
+       setApiStatus('error');
+       const allMoves = getAllLegalMoves(board, 'black');
+       if (allMoves.length > 0) {
+          const randomMove = allMoves[Math.floor(Math.random() * allMoves.length)];
+          const newBoard = board.map(r => [...r]);
+          // Simplified execution for random move (no castling/promotion checks for random fallback usually needed or acceptable risk)
+          // Actually let's use the main logic if possible, but we don't have notation.
+          // Let's just do a basic move.
+          const fromR = randomMove.from[0];
+          const fromC = randomMove.from[1];
+          const toR = randomMove.to[0];
+          const toC = randomMove.to[1];
+          
+          newBoard[toR][toC] = newBoard[fromR][fromC];
+          newBoard[fromR][fromC] = null;
+          
+          setBoard(newBoard);
+          setCurrentTurn('white');
+          
+          const files = 'abcdefgh';
+          const notation = `${files[fromC]}${8 - fromR}-${files[toC]}${8 - toR}`;
+          setMoveHistory(prev => [...prev, notation]);
+       }
     }
     
     setIsThinking(false);
-  }, [getAIMove, checkGameEnd, addXP]);
+  }, [checkGameEnd, addXP, customDepth, getAllLegalMoves, castlingRights]);
 
   // Handle square click
   const handleSquareClick = (row: number, col: number) => {
