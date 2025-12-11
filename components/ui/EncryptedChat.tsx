@@ -99,6 +99,9 @@ export const EncryptedChat: React.FC<EncryptedChatProps> = ({ onClose, currentUs
       } else {
         setUsers([]);
       }
+    }, (error) => {
+      console.error(error);
+      setError("Connection Blocked: Update Firebase Console Rules to allow 'chat' access.");
     });
 
     return () => {
@@ -146,6 +149,9 @@ export const EncryptedChat: React.FC<EncryptedChatProps> = ({ onClose, currentUs
           remove(ref(database, `chat/messages/${myProfile.id}/${msgKey}`));
         });
       }
+    }, (error) => {
+      console.error(error);
+      setError("Sync Failed: Check Rules.");
     });
 
     return () => off(inboxRef);
@@ -232,6 +238,11 @@ export const EncryptedChat: React.FC<EncryptedChatProps> = ({ onClose, currentUs
         </div>
 
         {/* Content */}
+        {error && (
+          <div className="bg-red-900/50 border-b border-red-500/30 p-2 text-center text-red-200 text-xs">
+            {error}
+          </div>
+        )}
         <div className="flex-1 overflow-hidden relative">
           
           {step === 'join' && (

@@ -11,6 +11,10 @@
       "$userId": {
         ".validate": "newData.hasChildren(['name', 'score'])"
       }
+    },
+    "chat": {
+      ".read": true,
+      ".write": true
     }
   }
 }
