@@ -111,14 +111,14 @@ const algebraicToCoords = (algebraic: string): [number, number] => {
 };
 
 const DIFFICULTY_CONFIG = {
-  easy: { depth: 5, label: 'Easy', description: 'Beginner friendly', color: 'bg-green-600', thinkTime: 50 },
-  medium: { depth: 10, label: 'Medium', description: 'Casual player', color: 'bg-yellow-600', thinkTime: 50 },
-  hard: { depth: 14, label: 'Hard', description: 'Advanced tactics', color: 'bg-orange-600', thinkTime: 80 },
-  dark: { depth: 18, label: '💀 DARK', description: 'Stockfish maximum', color: 'bg-purple-900', thinkTime: 100 },
-  custom: { depth: 12, label: '🏚️ Custom', description: 'Choose your depth', color: 'bg-cyan-600', thinkTime: 50 },
+  easy: { depth: 2, label: 'Easy', description: 'Beginner friendly', color: 'bg-green-600', thinkTime: 50 },
+  medium: { depth: 8, label: 'Medium', description: 'Intermediate', color: 'bg-yellow-600', thinkTime: 50 },
+  hard: { depth: 15, label: 'Hard', description: 'Advanced Challenge', color: 'bg-orange-600', thinkTime: 80 },
+  dark: { depth: 22, label: '💀 IMPOSSIBLE', description: 'Grandmaster Level', color: 'bg-purple-900', thinkTime: 100 },
+  custom: { depth: 12, label: '🛠️ Custom', description: 'Set your level', color: 'bg-cyan-600', thinkTime: 50 },
 };
 
-const MAX_API_DEPTH = 18;
+const MAX_API_DEPTH = 25;
 
 export const ChessGame: React.FC<ChessGameProps> = ({ onClose, addXP }) => {
   const [board, setBoard] = useState<Board>(createInitialBoard);
@@ -439,13 +439,14 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, addXP }) => {
     const movePromise = new Promise<string | null>((resolve) => {
       engineMoveResolve.current = resolve;
       // Fallback timeout
+      const timeoutMs = depth > 15 ? 60000 : 20000;
       setTimeout(() => {
         if (engineMoveResolve.current) {
           console.warn('Stockfish timeout, making random move');
           engineMoveResolve.current(null); // Will trigger fallback
           engineMoveResolve.current = null;
         }
-      }, 20000);
+      }, timeoutMs);
     });
 
     const move = await movePromise;
@@ -700,7 +701,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, addXP }) => {
               <span className="text-3xl">♟️</span>
               <div>
                 <h2 className="text-xl font-bold text-white">Chess vs Stockfish</h2>
-                <span className="text-xs bg-green-500/20 text-green-400 px-2 py-0.5 rounded">Powered by chess-api.com</span>
+                <span className="text-xs bg-green-500/20 text-green-400 px-2 py-0.5 rounded">Local Engine</span>
               </div>
             </div>
             <button onClick={onClose} className="p-2 hover:bg-slate-700 rounded-lg text-slate-400 hover:text-white">
@@ -942,7 +943,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, addXP }) => {
               <p>♙ XP Rewards:</p>
               <p>• Capture pieces: +1-9 XP</p>
               <p>• Win: +{difficulty === 'dark' ? '500' : difficulty === 'hard' ? '200' : difficulty === 'medium' ? '100' : difficulty === 'custom' ? (customDepth * 25) : '50'} XP</p>
-              <p className="text-slate-600 mt-2">Powered by chess-api.com (Stockfish 17)</p>
+              <p className="text-slate-600 mt-2">Local Stockfish Engine (WASM)</p>
             </div>
           </div>
         </div>
