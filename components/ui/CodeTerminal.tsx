@@ -148,8 +148,10 @@ const SnakeGame = ({ onExit, addXP }: { onExit: () => void; addXP: (amount: numb
 
     const speed = difficultySettings[difficulty].speed;
 
+    let isGameOver = false;
+
     const gameLoop = setInterval(() => {
-      if (gameOver) return;
+      if (isGameOver) return;
 
       const { x: velocityX, y: velocityY } = velocityRef.current;
       playerX += velocityX;
@@ -169,7 +171,9 @@ const SnakeGame = ({ onExit, addXP }: { onExit: () => void; addXP: (amount: numb
       for (let i = 0; i < trail.length; i++) {
         ctx.fillRect(trail[i].x * gridSize, trail[i].y * gridSize, gridSize - 2, gridSize - 2);
         if (trail[i].x === playerX && trail[i].y === playerY && (velocityX !== 0 || velocityY !== 0)) {
+           isGameOver = true;
            setGameOver(true);
+           return;
         }
       }
 
@@ -218,7 +222,7 @@ const SnakeGame = ({ onExit, addXP }: { onExit: () => void; addXP: (amount: numb
       document.removeEventListener('keydown', handleKey);
     };
 
-  }, [gameStarted, difficulty, gameOver, onExit, addXP]);
+  }, [gameStarted, difficulty, onExit, addXP]);
 
   // ... (render remains same) ...
   // Need to copy Full render if I replace the component def.
@@ -816,7 +820,7 @@ export const CodeTerminal = () => {
         {gameMode === 'dino' && (
           <DinoGame onExit={() => setGameMode('none')} addXP={addXP} />
         )}
-        {gameMode === 'none' && ( // This condition now explicitly renders the terminal
+        {(gameMode === 'none' || gameMode === 'guess' || gameMode === 'guess_select') && ( // Render terminal for none and guess modes
           <div 
             ref={containerRef}
             className={`absolute inset-0 p-4 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-600 ${themeStyles.text}`}
