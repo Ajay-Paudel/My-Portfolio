@@ -124,6 +124,13 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, addXP }) => {
   const [apiStatus, setApiStatus] = useState<'connected' | 'error' | 'idle'>('idle');
   const [evaluation, setEvaluation] = useState<number | null>(null);
   const [customDepth, setCustomDepth] = useState(12);
+  // Castling rights: track if king/rooks have moved
+  const [castlingRights, setCastlingRights] = useState({
+    whiteKing: true,   // Can white castle king-side?
+    whiteQueen: true,  // Can white castle queen-side?
+    blackKing: true,   // Can black castle king-side?
+    blackQueen: true,  // Can black castle queen-side?
+  });
   const wsRef = useRef<WebSocket | null>(null);
 
   // Get valid moves for a piece
@@ -200,6 +207,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, addXP }) => {
         for (const [dr, dc] of [[-1,-1],[-1,0],[-1,1],[0,-1],[0,1],[1,-1],[1,0],[1,1]]) {
           if (canMoveTo(row + dr, col + dc)) moves.push([row + dr, col + dc]);
         }
+        // Castling moves will be added separately since we need game state
         break;
     }
 
@@ -233,19 +241,80 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, addXP }) => {
     return false;
   }, [getValidMoves]);
 
-  // Get legal moves
+  // Get legal moves (including castling for kings)
   const getLegalMoves = useCallback((board: Board, row: number, col: number): [number, number][] => {
     const piece = board[row][col];
     if (!piece) return [];
     
     const validMoves = getValidMoves(board, row, col);
-    return validMoves.filter(([toRow, toCol]) => {
+    const legalMoves = validMoves.filter(([toRow, toCol]) => {
       const newBoard = board.map(r => [...r]);
       newBoard[toRow][toCol] = newBoard[row][col];
       newBoard[row][col] = null;
       return !isKingInCheck(newBoard, piece.color);
     });
-  }, [getValidMoves, isKingInCheck]);
+
+    // Add castling moves for king
+    if (piece.type === 'king') {
+      const kingRow = piece.color === 'white' ? 7 : 0;
+      
+      // Only check if king is on starting position
+      if (row === kingRow && col === 4) {
+        // Check not in check currently
+        if (!isKingInCheck(board, piece.color)) {
+          // King-side castling (O-O)
+          const canKingSide = piece.color === 'white' ? castlingRights.whiteKing : castlingRights.blackKing;
+          if (canKingSide) {
+            // Check squares between king and rook are empty
+            if (!board[kingRow][5] && !board[kingRow][6]) {
+              // Check rook is still there
+              const rook = board[kingRow][7];
+              if (rook?.type === 'rook' && rook?.color === piece.color) {
+                // Check king doesn't pass through check (f1/f8) and end in check (g1/g8)
+                const testBoard1 = board.map(r => [...r]);
+                testBoard1[kingRow][5] = testBoard1[kingRow][4];
+                testBoard1[kingRow][4] = null;
+                
+                const testBoard2 = board.map(r => [...r]);
+                testBoard2[kingRow][6] = testBoard2[kingRow][4];
+                testBoard2[kingRow][4] = null;
+                
+                if (!isKingInCheck(testBoard1, piece.color) && !isKingInCheck(testBoard2, piece.color)) {
+                  legalMoves.push([kingRow, 6]); // King moves to g1/g8
+                }
+              }
+            }
+          }
+          
+          // Queen-side castling (O-O-O)
+          const canQueenSide = piece.color === 'white' ? castlingRights.whiteQueen : castlingRights.blackQueen;
+          if (canQueenSide) {
+            // Check squares between king and rook are empty
+            if (!board[kingRow][1] && !board[kingRow][2] && !board[kingRow][3]) {
+              // Check rook is still there
+              const rook = board[kingRow][0];
+              if (rook?.type === 'rook' && rook?.color === piece.color) {
+                // Check king doesn't pass through check (d1/d8) and end in check (c1/c8)
+                const testBoard1 = board.map(r => [...r]);
+                testBoard1[kingRow][3] = testBoard1[kingRow][4];
+                testBoard1[kingRow][4] = null;
+                
+                const testBoard2 = board.map(r => [...r]);
+                testBoard2[kingRow][2] = testBoard2[kingRow][4];
+                testBoard2[kingRow][4] = null;
+                
+                if (!isKingInCheck(testBoard1, piece.color) && !isKingInCheck(testBoard2, piece.color)) {
+                  legalMoves.push([kingRow, 2]); // King moves to c1/c8
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+
+    return legalMoves;
+  }, [getValidMoves, isKingInCheck, castlingRights]);
 
   // Check for checkmate or stalemate
   const checkGameEnd = useCallback((board: Board, color: PieceColor): 'checkmate' | 'stalemate' | null => {
@@ -377,21 +446,62 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, addXP }) => {
       const capturedPiece = newBoard[toRow][toCol];
       const movedPiece = newBoard[fromRow][fromCol];
       
-      // Handle promotion
-      if (promotion && movedPiece?.type === 'pawn') {
-        const promotionTypes: Record<string, PieceType> = { q: 'queen', r: 'rook', b: 'bishop', n: 'knight' };
-        newBoard[toRow][toCol] = { type: promotionTypes[promotion] || 'queen', color: 'black' };
+      let notation = '';
+      const files = 'abcdefgh';
+      
+      // Check if this is a castling move (king moving 2 squares)
+      const isCastling = movedPiece?.type === 'king' && Math.abs(toCol - fromCol) === 2;
+      
+      if (isCastling) {
+        // Execute castling for AI (black)
+        const isKingSide = toCol > fromCol;
+        if (isKingSide) {
+          // King-side: King to g8, Rook from h8 to f8
+          newBoard[0][6] = movedPiece;
+          newBoard[0][4] = null;
+          newBoard[0][5] = newBoard[0][7];
+          newBoard[0][7] = null;
+          notation = 'O-O';
+        } else {
+          // Queen-side: King to c8, Rook from a8 to d8
+          newBoard[0][2] = movedPiece;
+          newBoard[0][4] = null;
+          newBoard[0][3] = newBoard[0][0];
+          newBoard[0][0] = null;
+          notation = 'O-O-O';
+        }
+        // Remove all castling rights for black
+        setCastlingRights(prev => ({ ...prev, blackKing: false, blackQueen: false }));
       } else {
-        newBoard[toRow][toCol] = movedPiece;
+        // Normal move
+        // Handle promotion
+        if (promotion && movedPiece?.type === 'pawn') {
+          const promotionTypes: Record<string, PieceType> = { q: 'queen', r: 'rook', b: 'bishop', n: 'knight' };
+          newBoard[toRow][toCol] = { type: promotionTypes[promotion] || 'queen', color: 'black' };
+        } else {
+          newBoard[toRow][toCol] = movedPiece;
+        }
+        newBoard[fromRow][fromCol] = null;
+        notation = `${movedPiece?.type === 'pawn' ? '' : movedPiece?.type[0].toUpperCase()}${files[fromCol]}${8 - fromRow}-${files[toCol]}${8 - toRow}`;
+        
+        // Update castling rights based on moved piece
+        if (movedPiece?.type === 'king') {
+          setCastlingRights(prev => ({ ...prev, blackKing: false, blackQueen: false }));
+        } else if (movedPiece?.type === 'rook') {
+          if (fromCol === 0) setCastlingRights(prev => ({ ...prev, blackQueen: false }));
+          if (fromCol === 7) setCastlingRights(prev => ({ ...prev, blackKing: false }));
+        }
       }
-      newBoard[fromRow][fromCol] = null;
       
       if (capturedPiece) {
         setCapturedPieces(prev => ({ ...prev, black: [...prev.black, capturedPiece] }));
+        // If capturing a rook in corner, remove that castling right for white
+        if (capturedPiece.type === 'rook') {
+          if (toRow === 7 && toCol === 0) setCastlingRights(prev => ({ ...prev, whiteQueen: false }));
+          if (toRow === 7 && toCol === 7) setCastlingRights(prev => ({ ...prev, whiteKing: false }));
+        }
       }
 
-      const files = 'abcdefgh';
-      const notation = `${movedPiece?.type === 'pawn' ? '' : movedPiece?.type[0].toUpperCase()}${files[fromCol]}${8 - fromRow}-${files[toCol]}${8 - toRow}`;
       setMoveHistory(prev => [...prev, notation]);
       
       setBoard(newBoard);
@@ -427,21 +537,62 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, addXP }) => {
         const capturedPiece = newBoard[row][col];
         const movedPiece = newBoard[selRow][selCol];
         
-        // Pawn promotion
-        if (movedPiece?.type === 'pawn' && row === 0) {
-          newBoard[row][col] = { type: 'queen', color: 'white' };
+        let notation = '';
+        const files = 'abcdefgh';
+        
+        // Check if this is a castling move (king moving 2 squares)
+        const isCastling = movedPiece?.type === 'king' && Math.abs(col - selCol) === 2;
+        
+        if (isCastling) {
+          // Execute castling
+          const isKingSide = col > selCol;
+          if (isKingSide) {
+            // King-side: King to g1, Rook from h1 to f1
+            newBoard[row][6] = movedPiece;
+            newBoard[row][4] = null;
+            newBoard[row][5] = newBoard[row][7];
+            newBoard[row][7] = null;
+            notation = 'O-O';
+          } else {
+            // Queen-side: King to c1, Rook from a1 to d1
+            newBoard[row][2] = movedPiece;
+            newBoard[row][4] = null;
+            newBoard[row][3] = newBoard[row][0];
+            newBoard[row][0] = null;
+            notation = 'O-O-O';
+          }
+          // Remove all castling rights for white
+          setCastlingRights(prev => ({ ...prev, whiteKing: false, whiteQueen: false }));
         } else {
-          newBoard[row][col] = movedPiece;
+          // Normal move
+          // Pawn promotion
+          if (movedPiece?.type === 'pawn' && row === 0) {
+            newBoard[row][col] = { type: 'queen', color: 'white' };
+          } else {
+            newBoard[row][col] = movedPiece;
+          }
+          newBoard[selRow][selCol] = null;
+          notation = `${movedPiece?.type === 'pawn' ? '' : movedPiece?.type[0].toUpperCase()}${files[selCol]}${8 - selRow}-${files[col]}${8 - row}`;
+          
+          // Update castling rights based on moved piece
+          if (movedPiece?.type === 'king') {
+            setCastlingRights(prev => ({ ...prev, whiteKing: false, whiteQueen: false }));
+          } else if (movedPiece?.type === 'rook') {
+            if (selCol === 0) setCastlingRights(prev => ({ ...prev, whiteQueen: false }));
+            if (selCol === 7) setCastlingRights(prev => ({ ...prev, whiteKing: false }));
+          }
         }
-        newBoard[selRow][selCol] = null;
         
         if (capturedPiece) {
           setCapturedPieces(prev => ({ ...prev, white: [...prev.white, capturedPiece] }));
           addXP(PIECE_VALUES[capturedPiece.type], `chess_capture_${Date.now()}`);
+          // If capturing a rook in corner, remove that castling right for black
+          if (capturedPiece.type === 'rook') {
+            if (row === 0 && col === 0) setCastlingRights(prev => ({ ...prev, blackQueen: false }));
+            if (row === 0 && col === 7) setCastlingRights(prev => ({ ...prev, blackKing: false }));
+          }
         }
 
-        const files = 'abcdefgh';
-        const notation = `${movedPiece?.type === 'pawn' ? '' : movedPiece?.type[0].toUpperCase()}${files[selCol]}${8 - selRow}-${files[col]}${8 - row}`;
         setMoveHistory(prev => [...prev, notation]);
         
         setBoard(newBoard);
@@ -483,6 +634,13 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, addXP }) => {
     setIsThinking(false);
     setApiStatus('idle');
     setEvaluation(null);
+    // Reset castling rights
+    setCastlingRights({
+      whiteKing: true,
+      whiteQueen: true,
+      blackKing: true,
+      blackQueen: true,
+    });
     addXP(2, 'chess_start');
   };
 
