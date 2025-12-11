@@ -266,49 +266,98 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, addXP }) => {
     return null;
   }, [getLegalMoves, isKingInCheck]);
 
-  // Call Chess API for best move
+  // Get all legal moves for a color (for fallback)
+  const getAllLegalMoves = useCallback((board: Board, color: PieceColor): { from: [number, number], to: [number, number] }[] => {
+    const moves: { from: [number, number], to: [number, number] }[] = [];
+    for (let r = 0; r < 8; r++) {
+      for (let c = 0; c < 8; c++) {
+        if (board[r][c]?.color === color) {
+          const legalMoves = getLegalMoves(board, r, c);
+          legalMoves.forEach(([toR, toC]) => {
+            moves.push({ from: [r, c], to: [toR, toC] });
+          });
+        }
+      }
+    }
+    return moves;
+  }, [getLegalMoves]);
+
+  // Call Chess API for best move with retry logic
   const getAIMove = useCallback(async (board: Board, diff: Difficulty): Promise<string | null> => {
     const fen = boardToFEN(board, 'black');
     const config = DIFFICULTY_CONFIG[diff];
     const depth = diff === 'custom' ? customDepth : config.depth;
     
-    try {
-      setApiStatus('connected');
-      
-      const response = await fetch('https://chess-api.com/v1', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          fen,
-          depth,
-          maxThinkingTime: Math.max(50, depth * 5),
-        }),
-      });
+    const maxRetries = 3;
+    let lastError: Error | null = null;
+    
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+      try {
+        if (attempt > 0) {
+          setApiStatus('idle'); // Show reconnecting
+          await new Promise(resolve => setTimeout(resolve, 1000 * attempt)); // Exponential backoff
+        }
+        
+        setApiStatus('connected');
+        
+        // Create AbortController for timeout
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+        
+        const response = await fetch('https://chess-api.com/v1', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            fen,
+            depth,
+            maxThinkingTime: Math.max(50, depth * 5),
+          }),
+          signal: controller.signal,
+        });
+        
+        clearTimeout(timeoutId);
 
-      if (!response.ok) {
-        throw new Error('API request failed');
-      }
+        if (!response.ok) {
+          throw new Error(`API request failed: ${response.status}`);
+        }
 
-      const data = await response.json();
-      
-      if (data.eval !== undefined) {
-        setEvaluation(data.eval);
+        const data = await response.json();
+        
+        if (data.eval !== undefined) {
+          setEvaluation(data.eval);
+        }
+        
+        // The API returns move in format like "e7e5" or "b7b8q" for promotion
+        if (data.move || data.lan) {
+          setApiStatus('connected');
+          return data.move || data.lan;
+        }
+        
+        throw new Error('No move in response');
+      } catch (error) {
+        lastError = error as Error;
+        console.error(`Chess API attempt ${attempt + 1} failed:`, error);
       }
-      
-      // The API returns move in format like "e7e5" or "b7b8q" for promotion
-      if (data.move || data.lan) {
-        return data.move || data.lan;
-      }
-      
-      return null;
-    } catch (error) {
-      console.error('Chess API error:', error);
-      setApiStatus('error');
-      return null;
     }
-  }, [customDepth]);
+    
+    // All retries failed - use fallback random move
+    console.warn('All API retries failed, using fallback random move');
+    setApiStatus('error');
+    
+    // Generate a random legal move as fallback
+    const allMoves = getAllLegalMoves(board, 'black');
+    if (allMoves.length > 0) {
+      const randomMove = allMoves[Math.floor(Math.random() * allMoves.length)];
+      const files = 'abcdefgh';
+      const fromSquare = `${files[randomMove.from[1]]}${8 - randomMove.from[0]}`;
+      const toSquare = `${files[randomMove.to[1]]}${8 - randomMove.to[0]}`;
+      return `${fromSquare}${toSquare}`;
+    }
+    
+    return null;
+  }, [customDepth, getAllLegalMoves]);
 
   // Make AI move
   const makeAIMove = useCallback(async (board: Board, diff: Difficulty) => {
@@ -644,8 +693,9 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, addXP }) => {
               {gameStatus === 'playing' && (
                 <div className="text-center">
                   <div className="text-lg font-bold text-white">
-                    {isThinking ? '🤔 Stockfish thinking...' : 
-                     currentTurn === 'white' ? '⚪ Your Turn' : '⚫ AI Turn'}
+                    {isThinking ? (
+                      apiStatus === 'error' ? '🔄 Retrying...' : '🤔 Stockfish thinking...'
+                    ) : currentTurn === 'white' ? '⚪ Your Turn' : '⚫ AI Turn'}
                   </div>
                   {inCheck && <div className="text-orange-400 font-bold">⚠️ Check!</div>}
                   {evaluation !== null && (
