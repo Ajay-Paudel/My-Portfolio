@@ -5,6 +5,7 @@ import { TicTacToe } from './TicTacToe';
 import { useGamification } from '../../hooks/useGamification';
 import { useLeaderboard } from '../../hooks/useLeaderboard';
 import { DinoGame } from './DinoGame';
+import { ChessGame } from './ChessGame';
 
 // --- Types & Constants ---
 type Theme = 'dark' | 'light' | 'neon' | 'hacker';
@@ -313,6 +314,7 @@ export const CodeTerminal = () => {
   const [isMatrix, setIsMatrix] = useState(false);
   const [gameMode, setGameMode] = useState<'none' | 'snake' | 'tictactoe' | 'guess' | 'guess_select' | 'dino'>('none');
   const [guessGame, setGuessGame] = useState<{ target: number; tries: number; maxRange: number } | null>(null);
+  const [showChess, setShowChess] = useState(false);
 
   // Gamification & Leaderboard
   const { level, xp, progress, isLevelUp, addXP, resetLevelUp, resetProgress } = useGamification();
@@ -781,7 +783,7 @@ export const CodeTerminal = () => {
         <div className="flex space-x-2">
           <div className="w-3 h-3 rounded-full bg-red-500"></div>
           <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
-          <div className="w-3 h-3 rounded-full bg-green-500"></div>
+          <div className="w-3 h-3 rounded-full bg-green-500 cursor-pointer hover:ring-2 hover:ring-green-400 hover:ring-offset-1 hover:ring-offset-black transition-all" onClick={() => setShowChess(true)} title="🤫"></div>
         </div>
         
         {/* Title & XP Bar */}
@@ -855,6 +857,14 @@ export const CodeTerminal = () => {
           </div>
         )}
       </div>
+
+      {/* Hidden Chess Game Easter Egg */}
+      {showChess && (
+        <ChessGame 
+          onClose={() => setShowChess(false)} 
+          addXP={addXP}
+        />
+      )}
     </div>
   );
 };
