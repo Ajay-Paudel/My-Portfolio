@@ -438,8 +438,8 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, addXP }) => {
     // Use promise to wait for move from worker flow
     const movePromise = new Promise<string | null>((resolve) => {
       engineMoveResolve.current = resolve;
-      // Fallback timeout
-      const timeoutMs = depth > 15 ? 60000 : 20000;
+      // Fallback timeout - 5 minutes for deep searches, 20s for fast
+      const timeoutMs = depth > 20 ? 300000 : (depth > 15 ? 60000 : 20000);
       setTimeout(() => {
         if (engineMoveResolve.current) {
           console.warn('Stockfish timeout, making random move');
@@ -449,8 +449,27 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, addXP }) => {
       }, timeoutMs);
     });
 
-    const move = await movePromise;
+    let move = await movePromise;
     
+    // Fallback if no move returned (timeout or error)
+    if (!move) {
+       setApiStatus('error');
+       const allMoves = getAllLegalMoves(board, 'black');
+       if (allMoves.length > 0) {
+          const randomMove = allMoves[Math.floor(Math.random() * allMoves.length)];
+          const files = 'abcdefgh';
+          const fromSquare = `${files[randomMove.from[1]]}${8 - randomMove.from[0]}`;
+          const toSquare = `${files[randomMove.to[1]]}${8 - randomMove.to[0]}`;
+          move = `${fromSquare}${toSquare}`;
+          
+          // Handle promotion in fallback (always queen)
+          const piece = board[randomMove.from[0]][randomMove.from[1]];
+          if (piece?.type === 'pawn' && randomMove.to[0] === 7) {
+            move += 'q';
+          }
+       }
+    }
+
     if (move && move.length >= 4) {
       const fromSquare = move.substring(0, 2);
       const toSquare = move.substring(2, 4);
@@ -460,7 +479,7 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, addXP }) => {
       const [toRow, toCol] = algebraicToCoords(toSquare);
       
       const newBoard = board.map(r => [...r]);
-      const capturedPiece = newBoard[toRow][toCol];
+      let capturedPiece = newBoard[toRow][toCol];
       const movedPiece = newBoard[fromRow][fromCol];
       
       let notation = '';
@@ -469,6 +488,9 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, addXP }) => {
       // Check if this is a castling move (king moving 2 squares)
       const isCastling = movedPiece?.type === 'king' && Math.abs(toCol - fromCol) === 2;
       
+      // Check for En Passant (Pawn moves diagonally to empty square)
+      const isEnPassant = movedPiece?.type === 'pawn' && Math.abs(toCol - fromCol) === 1 && newBoard[toRow][toCol] === null;
+
       if (isCastling) {
         // Execute castling for AI (black)
         const isKingSide = toCol > fromCol;
@@ -491,6 +513,14 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, addXP }) => {
         setCastlingRights(prev => ({ ...prev, blackKing: false, blackQueen: false }));
       } else {
         // Normal move
+        
+        // Handle En Passant Execution
+        if (isEnPassant) {
+          // Capture the pawn on the original row (fromRow, toCol)
+          capturedPiece = newBoard[fromRow][toCol];
+          newBoard[fromRow][toCol] = null;
+        }
+
         // Handle promotion
         if (promotion && movedPiece?.type === 'pawn') {
           const promotionTypes: Record<string, PieceType> = { q: 'queen', r: 'rook', b: 'bishop', n: 'knight' };
@@ -532,31 +562,6 @@ export const ChessGame: React.FC<ChessGameProps> = ({ onClose, addXP }) => {
       } else {
         setCurrentTurn('white');
       }
-    } else {
-       // Fallback: Random move
-       setApiStatus('error');
-       const allMoves = getAllLegalMoves(board, 'black');
-       if (allMoves.length > 0) {
-          const randomMove = allMoves[Math.floor(Math.random() * allMoves.length)];
-          const newBoard = board.map(r => [...r]);
-          // Simplified execution for random move (no castling/promotion checks for random fallback usually needed or acceptable risk)
-          // Actually let's use the main logic if possible, but we don't have notation.
-          // Let's just do a basic move.
-          const fromR = randomMove.from[0];
-          const fromC = randomMove.from[1];
-          const toR = randomMove.to[0];
-          const toC = randomMove.to[1];
-          
-          newBoard[toR][toC] = newBoard[fromR][fromC];
-          newBoard[fromR][fromC] = null;
-          
-          setBoard(newBoard);
-          setCurrentTurn('white');
-          
-          const files = 'abcdefgh';
-          const notation = `${files[fromC]}${8 - fromR}-${files[toC]}${8 - toR}`;
-          setMoveHistory(prev => [...prev, notation]);
-       }
     }
     
     setIsThinking(false);
